@@ -12,15 +12,15 @@ type MoneyAgrees struct {
 	BtcCorrelation []float64 `json:"btc_correlation,omitempty"`
 }
 
-func Agresss(m1, m2 Money, btc CorrelationData) *MoneyAgrees {
+func Agresss(m1, m2 Money, btc CorrelationData, fromTime time.Time) *MoneyAgrees {
 	v := &MoneyAgrees{}
-	v.Agresss(m1, m2, btc)
+	v.Agresss(m1, m2, btc, fromTime)
 	return v
 }
 
-func (m *MoneyAgrees) Agresss(m1, m2 Money, btc CorrelationData) {
+func (m *MoneyAgrees) Agresss(m1, m2 Money, btc CorrelationData, fromTime time.Time) {
 	t := time.Now()
-	fromTime := time.Date(t.Year()-2, t.Month(), 0, 0, 0, 0, 0, t.Location())
+	// fromTime := time.Date(t.Year()-2, t.Month(), 0, 0, 0, 0, 0, t.Location())
 
 	// filter data
 	filterOb := func(m Money) map[string]float64 {

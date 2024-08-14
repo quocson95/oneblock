@@ -16,6 +16,7 @@ type Sp500Agress struct {
 	Sp500          []float64 `json:"sp_500,omitempty"`
 	BtcPrice       []float64 `json:"btc_price,omitempty"`
 	BtcCorrelation []float64 `json:"btc_correlation,omitempty"`
+	M2             []float64 `json:"m2,omitempty"`
 }
 
 func (s *Sp500Agress) Agress(sp500 Sp500, btc BtcGoldAgress, fromTime time.Time) {

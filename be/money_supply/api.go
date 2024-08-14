@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
@@ -76,6 +77,8 @@ func MoneySupplyAgress(c echo.Context) error {
 		zap.L().With(zap.Error(err)).Error("load data error")
 		return echo.NewHTTPError(http.StatusBadRequest, "load data error")
 	}
-	mAgress := common.Agresss(m1, m2, btc)
+	t := time.Now()
+	fromTime := time.Date(t.Year()-6, t.Month(), 0, 0, 0, 0, 0, t.Location())
+	mAgress := common.Agresss(m1, m2, btc, fromTime)
 	return c.JSON(http.StatusOK, mAgress)
 }

@@ -52,7 +52,7 @@
 
   <body>
      <div id="chart"></div>
-
+     <div id="chart2"></div>
     <script>
         function loadData() {
           const requestOptions = {
@@ -65,6 +65,7 @@
     var jsonObj = JSON.parse(result);
     console.log(jsonObj);
     drawChart(jsonObj);
+    drawChart2(jsonObj)
   })
   .catch((error) => console.error(error));
 }
@@ -73,124 +74,98 @@
       function drawChart(jsonData) { 
         var options = {
           series: [{
-          name: 'BTC Price',
-          type: 'column',
-          data: jsonData.btc_price
+          name: 'BTC',
+          type: 'area',
+          data: jsonData.btc_price 
         }, {
-          name: 'Gold Price',
-          type: 'column',
-          data: jsonData.gold_price
-        }, {
-          name: 'Btc Correlation',
+          name: 'Gold',
           type: 'line',
-          data: jsonData.btc_correlation
+          data: jsonData.gold_price
         }],
           chart: {
-          height: 650,
+          height: 350,
           type: 'line',
-          stacked: false
-        },
-        dataLabels: {
-          enabled: false
         },
         stroke: {
-          width: [1, 1, 4]
+          curve: 'smooth',
+          width: [2,2]
         },
-        title: {
-          text: 'BTC GOLD',
-          align: 'left',
-          offsetX: 110
+        fill: {
+          type:'solid',
+          opacity: [0.35, 1],
         },
-        xaxis: {
-          categories: jsonData.labels,
+        labels: jsonData.labels,
+        markers: {
+          size: 0
         },
         yaxis: [
           {
-            seriesName: 'BTC Price',
-            axisTicks: {
-              show: true,
-            },
-            axisBorder: {
-              show: true,
-              color: '#008FFB'
-            },
-            labels: {
-              style: {
-                colors: '#008FFB',
-              }
-            },
             title: {
-              text: "USD",
-              style: {
-                color: '#008FFB',
-              }
-            },
-            tooltip: {
-              enabled: true
-            }
-          },
-          {
-            seriesName: 'Gold Price',
-            opposite: true,
-            axisTicks: {
-              show: true,
-            },
-            axisBorder: {
-              show: true,
-              color: '#00E396'
-            },
-            labels: {
-              style: {
-                colors: '#00E396',
-              }
-            },
-            title: {
-              text: "USD",
-              style: {
-                color: '#00E396',
-              }
+              text: 'USD',
             },
           },
           {
-            seriesName: 'Btc Correlation',
             opposite: true,
-            axisTicks: {
-              show: true,
-            },
-            axisBorder: {
-              show: true,
-              color: '#FEB019'
-            },
-            labels: {
-              style: {
-                colors: '#FEB019',
-              },
-            },
             title: {
-              text: "%",
-              style: {
-                color: '#FEB019',
-              }
-            }
+              text: 'USD',
+            },
           },
         ],
         tooltip: {
-          fixed: {
-            enabled: true,
-            position: 'topLeft', // topRight, topLeft, bottomRight, bottomLeft
-            offsetY: 30,
-            offsetX: 60
-          },
-        },
-        legend: {
-          horizontalAlign: 'left',
-          offsetX: 40
+          shared: true,
+          intersect: false,
+          y: {
+            formatter: function (y) {
+              if(typeof y !== "undefined") {
+                return  y.toFixed(0) + " points";
+              }
+              return y;
+            }
+          }
         }
         };
 
         var chart = new ApexCharts(document.querySelector("#chart"), options);
         chart.render();
       
+      }
+
+      function drawChart2(jsonData) {
+        var options = {
+          series: [{
+            name: "Gold Correction",
+            data: jsonData.btc_correlation 
+        }],
+          chart: {
+          height: 350,
+          type: 'line',
+          zoom: {
+            enabled: false
+          }
+        },
+        dataLabels: {
+          enabled: false
+        },
+        stroke: {
+          curve: 'straight'
+        },
+        title: {
+          text: 'Gold Correction',
+          align: 'left'
+        },
+        grid: {
+          row: {
+            colors: ['#f3f3f3', 'transparent'], // takes an array which will be repeated on columns
+            opacity: 0.5
+          },
+        },
+        xaxis: {
+          categories: jsonData.labels,
+        }
+        };
+
+        var chart = new ApexCharts(document.querySelector("#chart2"), options);
+        chart.render();
       }
 
       loadData();

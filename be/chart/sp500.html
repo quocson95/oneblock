@@ -72,122 +72,61 @@
 
       function drawChart(jsonData) { 
         var options = {
-          series: [
-            {
-          name: 'BTC Correlation',
-          type: 'column',
-          data: jsonData.btc_correlation  
-        }, 
-        {
+          series: [{
+          name: 'BTC',
+          type: 'area',
+          data: jsonData.btc_price
+        }, {
           name: 'SP500',
           type: 'line',
           data: jsonData.sp_500
-        }, {
-          name: 'Btc',
+        },
+        {
+          name: 'M2',
           type: 'line',
-          data: jsonData.btc_price
-        }],
+          data: jsonData.m2
+        }
+      ],
           chart: {
           height: 650,
           type: 'line',
-          stacked: false
-        },
-        dataLabels: {
-          enabled: false
         },
         stroke: {
-          width: [2, 2, 4]
+          curve: 'smooth',
+          width: [1,2,2]
         },
-        title: {
-          text: 'SP500',
-          align: 'left',
-          offsetX: 110
+        fill: {
+          type:'solid',
+          opacity: [0.35, 1],
         },
-        xaxis: {
-          categories: jsonData.labels,
+        labels: jsonData.labels,
+        markers: {
+          size: 0
         },
         yaxis: [
-        {
-            seriesName: 'Btc Correlation',
-            opposite: true,
-            axisTicks: {
-              show: true,
-            },
-            axisBorder: {
-              show: true,
-              color: '#FEB019'
-            },
-            labels: {
-              style: {
-                colors: '#FEB019',
-              },
-            },
+          {
             title: {
-              text: "%",
-              style: {
-                color: '#FEB019',
-              }
-            }
+              text: 'USD',
+            },
           },
           {
-            seriesName: 'SP500',
-            axisTicks: {
-              show: true,
-            },
-            axisBorder: {
-              show: true,
-              color: '#008FFB'
-            },
-            labels: {
-              style: {
-                colors: '#008FFB',
-              }
-            },
-            title: {
-              text: "USD",
-              style: {
-                color: '#008FFB',
-              }
-            },
-            tooltip: {
-              enabled: true
-            }
-          },
-          {
-            seriesName: 'BTC',
             opposite: true,
-            axisTicks: {
-              show: true,
-            },
-            axisBorder: {
-              show: true,
-              color: '#00E396'
-            },
-            labels: {
-              style: {
-                colors: '#00E396',
-              }
-            },
             title: {
-              text: "USD",
-              style: {
-                color: '#00E396',
-              }
+              text: 'Points',
             },
           },
-          
         ],
         tooltip: {
-          fixed: {
-            enabled: true,
-            position: 'topLeft', // topRight, topLeft, bottomRight, bottomLeft
-            offsetY: 30,
-            offsetX: 60
-          },
-        },
-        legend: {
-          horizontalAlign: 'left',
-          offsetX: 40
+          shared: true,
+          intersect: false,
+          y: {
+            formatter: function (y) {
+              if(typeof y !== "undefined") {
+                return  y.toFixed(0) + " points";
+              }
+              return y;
+            }
+          }
         }
         };
 
