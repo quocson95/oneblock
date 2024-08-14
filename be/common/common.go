@@ -11,6 +11,7 @@ const (
 	MoneyM1Id MoneyId = "money_supply_m1"
 	MoneyM2Id MoneyId = "money_supply_m2"
 	BtcGold   MoneyId = "btc_gold"
+	SP500Id   MoneyId = "sp500"
 )
 
 func Load(id MoneyId, fn func(data []byte) error) error {

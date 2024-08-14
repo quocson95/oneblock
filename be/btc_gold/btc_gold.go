@@ -34,7 +34,7 @@ func BtcGoldAgressApi(e echo.Context) error {
 	}
 	m := &common.BtcGoldAgress{}
 	t := time.Now()
-	fromTime := time.Date(t.Year()-2, t.Month(), 0, 0, 0, 0, 0, t.Location())
+	fromTime := time.Date(t.Year()-4, t.Month(), 0, 0, 0, 0, 0, t.Location())
 	m.Agresss(correlationData, fromTime)
 	return e.JSON(http.StatusOK, m)
 }
