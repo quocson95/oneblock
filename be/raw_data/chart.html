@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Timeline Chart</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <style>
+        canvas {
+            max-width: 800px;
+            margin: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Interactive Timeline Chart</h1>
+    <label for="dateRange">Select Date Range:</label>
+    <input type="text" id="dateRange" />
+
+    <canvas id="myChart"></canvas>
+
+    <script>
+        // Sample data
+        const data = {
+            '2020': [100, 200, 300],
+            '2021': [150, 250, 350],
+            '2022': [200, 300, 400]
+        };
+
+        const ctx = document.getElementById('myChart').getContext('2d');
+        let myChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['Q1', 'Q2', 'Q3'],
+                datasets: [{
+                    label: 'Sales',
+                    data: data['2021'], // Default to 2021
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    fill: true,
+                    tension: 0.1
+                }]
+            },
+            options: {
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Quarter'
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Sales'
+                        },
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+
+        // Initialize date picker
+        flatpickr('#dateRange', {
+            mode: 'range',
+            dateFormat: 'Y',
+            onChange: function(selectedDates, dateStr, instance) {
+                const year = dateStr.split(' to ')[0];
+                updateChart(year);
+            }
+        });
+
+        // Function to update chart data based on selected year
+        function updateChart(year) {
+            myChart.data.datasets[0].data = data[year] || [];
+            myChart.update();
+        }
+    </script>
+</body>
+</html>
