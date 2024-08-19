@@ -28,7 +28,7 @@ func main() {
 	zap.L().With(zap.Int("port", port)).Info("start server")
 	apiHandler(e)
 	static(e)
-	e.Logger.Fatal(e.Start(fmt.Sprintf("localhost:%d", port)))
+	e.Logger.Fatal(e.Start(fmt.Sprintf(":%d", port)))
 }
 
 func apiHandler(e *echo.Echo) {
