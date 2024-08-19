@@ -1,8 +1,8 @@
 package main
 
 import (
-	btcgold "be/btc_gold"
-	moneysupply "be/money_supply"
+	"be/api"
+	"be/config"
 	"be/sp500"
 	"fmt"
 
@@ -22,21 +22,24 @@ func init() {
 }
 
 func main() {
+	config.LoadConfig("config.json")
 	e := echo.New()
 	port := 8080
 	zap.L().With(zap.Int("port", port)).Info("start server")
-	api(e)
+	apiHandler(e)
 	static(e)
 	e.Logger.Fatal(e.Start(fmt.Sprintf("localhost:%d", port)))
 }
 
-func api(e *echo.Echo) {
-	e.GET("/btc_gold_raw", btcgold.BtcGold)
-	e.GET("/m1", moneysupply.MoneySupplyM1)
-	e.GET("/m2", moneysupply.MoneySupplyM2)
-	e.GET("/money_supply", moneysupply.MoneySupplyAgress)
-	e.GET("/btc_gold", btcgold.BtcGoldAgressApi)
+func apiHandler(e *echo.Echo) {
+	e.GET("/btc_gold_raw", api.BtcGold)
+	e.GET("/m1", api.MoneySupplyM1)
+	e.GET("/m2", api.MoneySupplyM2)
+	e.GET("/money_supply", api.MoneySupplyAgress)
+	e.GET("/btc_gold", api.BtcGoldAgressApi)
 	e.GET("/sp500", sp500.Sp500)
+
+	e.GET("/btc_eth_static", api.BtcEthStatic)
 }
 
 func static(e *echo.Echo) {

@@ -1,4 +1,4 @@
-package moneysupply
+package api
 
 import (
 	"be/common"

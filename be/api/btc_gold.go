@@ -1,4 +1,4 @@
-package btcgold
+package api
 
 import (
 	"be/common"

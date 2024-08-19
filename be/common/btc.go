@@ -6,6 +6,18 @@ import (
 	"time"
 )
 
+type BtcCurrentPrice struct {
+	Symbol         string `json:"symbol"`
+	Price          string `json:"price"`
+	PriceChange1H  string `json:"priceChange1H"`
+	PriceChange24H string `json:"priceChange24H"`
+}
+type BtcPrice24H struct {
+	Prices       [][]float64 `json:"prices"`
+	MarketCaps   [][]float64 `json:"market_caps"`
+	TotalVolumes [][]float64 `json:"total_volumes"`
+}
+
 type CorrelationData struct {
 	BtcGoldCorrelation [][]float64 `json:"btc_gold_correlation"`
 	GoldPriceUsd       [][]float64 `json:"gold_price_usd"`
