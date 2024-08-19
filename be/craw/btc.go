@@ -108,7 +108,7 @@ func BtcPriceSummary() (*common.BtcCurrentPrice, error) {
 			priceChange := caclPercentChange(float64(p[1]), btcCurPrice)
 			btcPrice.PriceChange1H = strconv.FormatFloat(priceChange, 'f', 2, 64)
 		}
-		if nowUnix-int64(p[0]) >= 86400000 && len(btcPrice.PriceChange24H) == 0 {
+		if nowUnix-int64(p[0]) >= 82800000 {
 			priceChange := caclPercentChange(float64(p[1]), btcCurPrice)
 			btcPrice.PriceChange24H = strconv.FormatFloat(priceChange, 'f', 2, 64)
 		}
