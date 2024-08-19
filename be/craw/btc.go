@@ -16,7 +16,7 @@ type crawService struct {
 	btcPrice *common.BtcCurrentPrice
 }
 
-var CrawService = NewCrawService()
+// var CrawService = NewCrawService()
 
 func NewCrawService() *crawService {
 	c := &crawService{}
@@ -101,14 +101,14 @@ func BtcPriceSummary() (*common.BtcCurrentPrice, error) {
 		b := btcChange.Prices[j][0]
 		return a > b
 	})
-	nowUnix := time.Now().Unix()
+	nowUnix := time.Now().UnixMilli()
 	btcCurPrice, _ := strconv.ParseFloat(btcPrice.Price, 64)
 	for _, p := range btcChange.Prices {
-		if nowUnix-int64(p[0]) >= 3600 && len(btcPrice.PriceChange1H) > 0 {
+		if nowUnix-int64(p[0]) >= 3600000 && len(btcPrice.PriceChange1H) == 0 {
 			priceChange := caclPercentChange(float64(p[1]), btcCurPrice)
 			btcPrice.PriceChange1H = strconv.FormatFloat(priceChange, 'f', 2, 64)
 		}
-		if nowUnix-int64(p[0]) >= 86400 && len(btcPrice.PriceChange24H) > 0 {
+		if nowUnix-int64(p[0]) >= 86400000 && len(btcPrice.PriceChange24H) == 0 {
 			priceChange := caclPercentChange(float64(p[1]), btcCurPrice)
 			btcPrice.PriceChange24H = strconv.FormatFloat(priceChange, 'f', 2, 64)
 		}
@@ -117,5 +117,5 @@ func BtcPriceSummary() (*common.BtcCurrentPrice, error) {
 }
 
 func caclPercentChange(price1 float64, price2 float64) float64 {
-	return (price2 - price1) / price1
+	return (price2 - price1) * 100.0 / price1
 }
