@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crypto</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 50px;
+        }
+        .container {
+            display: inline-block;
+            text-align: left;
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            margin: 0 0 20px;
+        }
+        .price, .change {
+            margin: 10px 0;
+            font-size: 1.2em;
+        }
+        .change.positive {
+            color: green;
+        }
+        .change.negative {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <!-- <div class="container">
+        <h1>Crypto</h1>
+        <div class="price">
+            BTC: <span id="btc-price">Loading...</span>
+        </div>
+        <div class="change">
+            BTC 1h: <span id="btc-change-1h">Loading...</span>
+        </div>
+        <div class="change">
+            BTC 24h: <span id="btc-change-24h">Loading...</span>
+        </div>
+        <div class="price">
+            ETH Gas: <span id="eth-gas">Loading...</span>
+        </div>
+    </div> -->
+    <table style="text-align: left;">
+        <tr>
+            <th></th>
+            <th></th>
+        </tr>
+        <tr>
+            <td>BTC:</td>
+            <td>
+                <div class="price">                    <span id="btc-price">Loading...</span>                </div>
+            </td>
+        </tr>
+        <tr >
+            <td>BTC 1h:</td>
+            <td>
+                <div class="change">
+                    <span id="btc-change-1h">Loading...</span>
+                </div>
+            </td>
+        </tr> 
+        <tr>
+            <td>BTC 24h:</td>
+            <td>
+                <div class="change">
+                    <span id="btc-change-24h">Loading...</span>
+                </div>
+            </td>
+        </tr> 
+        <tr>
+            <td> ETH Gas:</td>
+            <td>
+                <div class="price">
+                    <span id="eth-gas">Loading...</span>
+                </div>
+            </td>
+        </tr> 
+    </table>
+
+    <script>
+        async function fetchBtcData() {
+            try {
+                // Fetch current price and price change from CoinGecko
+                const data =  await fetch('http://173.249.28.252:8080/btc_eth_static');
+                // console.log(data)
+                // const btcEthStatic = JSON.parse( data.body);
+                const btcEthStatic = await data.json()
+                // Update HTML
+                document.getElementById('btc-price').textContent = `${parseFloat(btcEthStatic.price).toFixed(0)}$`;
+                const priceChange = parseFloat(btcEthStatic.priceChange1H).toFixed(2);
+                updateChange('btc-change-1h', priceChange);
+                const priceChange24h = parseFloat(btcEthStatic.priceChange24H).toFixed(2);
+                updateChange('btc-change-24h', priceChange24h);
+                document.getElementById('eth-gas').textContent = `${parseFloat(btcEthStatic.result.ProposeGasPrice).toFixed(2)}`;
+            } catch (error) {
+                console.error('Error fetching BTC data:', error);
+                document.getElementById('btc-price').textContent = 'Error';
+                document.getElementById('btc-change').textContent = 'Error';
+            }
+        }
+
+        function updateChange(id, priceChange) {
+            const changeElement = document.getElementById(id);
+            changeElement.textContent = `${priceChange}%`;
+            changeElement.className = priceChange >= 0 ? 'change positive' : 'change negative';
+        }
+
+        // Fetch data when page loads
+        fetchBtcData();
+    </script>
+</body>
+</html>
