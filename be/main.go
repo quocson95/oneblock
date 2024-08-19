@@ -26,10 +26,10 @@ func main() {
 	config.LoadConfig("config.json")
 	e := echo.New()
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins: []string{"*"},                                                      // Allow all origins
-		AllowMethods: []string{echo.GET, echo.POST, echo.PUT, echo.DELETE, echo.OPTIONS}, // Allow all methods
-		AllowHeaders: []string{echo.HeaderContentType, echo.HeaderAccept},
-	}))
+        AllowOrigins: []string{"*"}, // Allow all origins
+        AllowMethods: []string{echo.GET, echo.POST, echo.PUT, echo.DELETE, echo.OPTIONS}, // Allow all methods
+        AllowHeaders: []string{echo.HeaderContentType, echo.HeaderAccept},
+    }))
 	port := 8080
 	zap.L().With(zap.Int("port", port)).Info("start server")
 	apiHandler(e)
