@@ -1,8 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests" />
     <title>Crypto</title>
     <style>
         body {
@@ -10,6 +12,7 @@
             text-align: center;
             margin: 50px;
         }
+
         .container {
             display: inline-block;
             text-align: left;
@@ -18,21 +21,27 @@
             border-radius: 8px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
+
         h1 {
             margin: 0 0 20px;
         }
-        .price, .change {
+
+        .price,
+        .change {
             margin: 10px 0;
             font-size: 1.2em;
         }
+
         .change.positive {
             color: green;
         }
+
         .change.negative {
             color: red;
         }
     </style>
 </head>
+
 <body>
     <!-- <div class="container">
         <h1>Crypto</h1>
@@ -57,17 +66,17 @@
         <tr>
             <td>BTC:</td>
             <td>
-                <div class="price">                    <span id="btc-price">Loading...</span>                </div>
+                <div class="price"> <span id="btc-price">Loading...</span> </div>
             </td>
         </tr>
-        <tr >
+        <tr>
             <td>BTC 1h:</td>
             <td>
                 <div class="change">
                     <span id="btc-change-1h">Loading...</span>
                 </div>
             </td>
-        </tr> 
+        </tr>
         <tr>
             <td>BTC 24h:</td>
             <td>
@@ -75,7 +84,7 @@
                     <span id="btc-change-24h">Loading...</span>
                 </div>
             </td>
-        </tr> 
+        </tr>
         <tr>
             <td> ETH Gas:</td>
             <td>
@@ -83,14 +92,14 @@
                     <span id="eth-gas">Loading...</span>
                 </div>
             </td>
-        </tr> 
+        </tr>
     </table>
 
     <script>
         async function fetchBtcData() {
             try {
                 // Fetch current price and price change from CoinGecko
-                const data =  await fetch('http://173.249.28.252:8080/btc_eth_static');
+                const data = await fetch('http://173.249.28.252:8080/api/btc_eth_static');
                 // console.log(data)
                 // const btcEthStatic = JSON.parse( data.body);
                 const btcEthStatic = await data.json()
@@ -118,4 +127,5 @@
         fetchBtcData();
     </script>
 </body>
+
 </html>

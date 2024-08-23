@@ -5,6 +5,7 @@ import (
 	"be/config"
 	"be/sp500"
 	"fmt"
+	"net/http"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -24,12 +25,13 @@ func init() {
 
 func main() {
 	config.LoadConfig("config.json")
+	api.DefaultS3Hepler.Init(config.GetConfig().S3Endpoint, "hcm", config.GetConfig().S3AccessKey, config.GetConfig().S3SecretKey)
 	e := echo.New()
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-        AllowOrigins: []string{"*"}, // Allow all origins
-        AllowMethods: []string{echo.GET, echo.POST, echo.PUT, echo.DELETE, echo.OPTIONS}, // Allow all methods
-        AllowHeaders: []string{echo.HeaderContentType, echo.HeaderAccept},
-    }))
+		AllowOrigins: []string{"*"},                                                      // Allow all origins
+		AllowMethods: []string{echo.GET, echo.POST, echo.PUT, echo.DELETE, echo.OPTIONS}, // Allow all methods
+		AllowHeaders: []string{echo.HeaderContentType, echo.HeaderAccept},
+	}))
 	port := 8080
 	zap.L().With(zap.Int("port", port)).Info("start server")
 	apiHandler(e)
@@ -38,6 +40,10 @@ func main() {
 }
 
 func apiHandler(e *echo.Echo) {
+	e.GET("/", func(c echo.Context) error {
+		c.JSON(http.StatusOK, "ok")
+		return nil
+	})
 	e.GET("/btc_gold_raw", api.BtcGold)
 	e.GET("/m1", api.MoneySupplyM1)
 	e.GET("/m2", api.MoneySupplyM2)
@@ -45,7 +51,8 @@ func apiHandler(e *echo.Echo) {
 	e.GET("/btc_gold", api.BtcGoldAgressApi)
 	e.GET("/sp500", sp500.Sp500)
 
-	e.GET("/btc_eth_static", api.BtcEthStatic)
+	e.GET("/api/btc_eth_static", api.BtcEthStatic)
+	e.GET("/api/storage", api.StorageFile)
 }
 
 func static(e *echo.Echo) {
