@@ -1,0 +1,577 @@
+{
+    "data": {
+        "get_execution": {
+            "execution_queued": null,
+            "execution_running": null,
+            "execution_succeeded": {
+                "execution_id": "01J3WS73A16MHYTV024F97SFEA",
+                "runtime_seconds": 1,
+                "generated_at": "2024-07-28T13:41:57.777954Z",
+                "columns": [
+                    "investment_date",
+                    "amount_raised",
+                    "cum_sum_amount_raised"
+                ],
+                "data": [
+                    {
+                        "investment_date": "2014-06-01",
+                        "amount_raised": 0.017142,
+                        "cum_sum_amount_raised": 0.017142
+                    },
+                    {
+                        "investment_date": "2014-07-01",
+                        "amount_raised": 0.047420000000000004,
+                        "cum_sum_amount_raised": 0.06456200000000001
+                    },
+                    {
+                        "investment_date": "2014-08-01",
+                        "amount_raised": 0.021030999999999998,
+                        "cum_sum_amount_raised": 0.085593
+                    },
+                    {
+                        "investment_date": "2014-09-01",
+                        "amount_raised": 0.021217000000000003,
+                        "cum_sum_amount_raised": 0.10681
+                    },
+                    {
+                        "investment_date": "2014-10-01",
+                        "amount_raised": 0.07496000000000001,
+                        "cum_sum_amount_raised": 0.18177000000000001
+                    },
+                    {
+                        "investment_date": "2014-11-01",
+                        "amount_raised": 0.02653600000000001,
+                        "cum_sum_amount_raised": 0.20830600000000002
+                    },
+                    {
+                        "investment_date": "2014-12-01",
+                        "amount_raised": 0.03773100000000001,
+                        "cum_sum_amount_raised": 0.24603700000000003
+                    },
+                    {
+                        "investment_date": "2015-01-01",
+                        "amount_raised": 0.089901,
+                        "cum_sum_amount_raised": 0.335938
+                    },
+                    {
+                        "investment_date": "2015-02-01",
+                        "amount_raised": 0.025127,
+                        "cum_sum_amount_raised": 0.361065
+                    },
+                    {
+                        "investment_date": "2015-03-01",
+                        "amount_raised": 0.011937999999999999,
+                        "cum_sum_amount_raised": 0.37300300000000003
+                    },
+                    {
+                        "investment_date": "2015-04-01",
+                        "amount_raised": 0.061929000000000005,
+                        "cum_sum_amount_raised": 0.43493200000000004
+                    },
+                    {
+                        "investment_date": "2015-05-01",
+                        "amount_raised": 0.06847700000000001,
+                        "cum_sum_amount_raised": 0.503409
+                    },
+                    {
+                        "investment_date": "2015-06-01",
+                        "amount_raised": 0.006685,
+                        "cum_sum_amount_raised": 0.510094
+                    },
+                    {
+                        "investment_date": "2015-07-01",
+                        "amount_raised": 0.028,
+                        "cum_sum_amount_raised": 0.5380940000000001
+                    },
+                    {
+                        "investment_date": "2015-08-01",
+                        "amount_raised": 0.011623999999999997,
+                        "cum_sum_amount_raised": 0.549718
+                    },
+                    {
+                        "investment_date": "2015-09-01",
+                        "amount_raised": 0.059405999999999994,
+                        "cum_sum_amount_raised": 0.609124
+                    },
+                    {
+                        "investment_date": "2015-10-01",
+                        "amount_raised": 0.092972,
+                        "cum_sum_amount_raised": 0.702096
+                    },
+                    {
+                        "investment_date": "2015-11-01",
+                        "amount_raised": 0.0097,
+                        "cum_sum_amount_raised": 0.7117960000000001
+                    },
+                    {
+                        "investment_date": "2015-12-01",
+                        "amount_raised": 0.018221,
+                        "cum_sum_amount_raised": 0.7300170000000001
+                    },
+                    {
+                        "investment_date": "2016-01-01",
+                        "amount_raised": 0.10313800000000002,
+                        "cum_sum_amount_raised": 0.8331550000000002
+                    },
+                    {
+                        "investment_date": "2016-02-01",
+                        "amount_raised": 0.16582300000000003,
+                        "cum_sum_amount_raised": 0.9989780000000003
+                    },
+                    {
+                        "investment_date": "2016-03-01",
+                        "amount_raised": 0.036947999999999995,
+                        "cum_sum_amount_raised": 1.0359260000000003
+                    },
+                    {
+                        "investment_date": "2016-04-01",
+                        "amount_raised": 0.08916600000000001,
+                        "cum_sum_amount_raised": 1.1250920000000004
+                    },
+                    {
+                        "investment_date": "2016-05-01",
+                        "amount_raised": 0.24740500000000004,
+                        "cum_sum_amount_raised": 1.3724970000000005
+                    },
+                    {
+                        "investment_date": "2016-06-01",
+                        "amount_raised": 0.027382000000000004,
+                        "cum_sum_amount_raised": 1.3998790000000005
+                    },
+                    {
+                        "investment_date": "2016-07-01",
+                        "amount_raised": 0.050863000000000005,
+                        "cum_sum_amount_raised": 1.4507420000000006
+                    },
+                    {
+                        "investment_date": "2016-08-01",
+                        "amount_raised": 0.022437000000000002,
+                        "cum_sum_amount_raised": 1.4731790000000007
+                    },
+                    {
+                        "investment_date": "2016-09-01",
+                        "amount_raised": 0.09891399999999999,
+                        "cum_sum_amount_raised": 1.5720930000000006
+                    },
+                    {
+                        "investment_date": "2016-10-01",
+                        "amount_raised": 0.016691,
+                        "cum_sum_amount_raised": 1.5887840000000006
+                    },
+                    {
+                        "investment_date": "2016-11-01",
+                        "amount_raised": 0.102713,
+                        "cum_sum_amount_raised": 1.6914970000000007
+                    },
+                    {
+                        "investment_date": "2016-12-01",
+                        "amount_raised": 0.09397100000000001,
+                        "cum_sum_amount_raised": 1.7854680000000007
+                    },
+                    {
+                        "investment_date": "2017-01-01",
+                        "amount_raised": 0.07634000000000003,
+                        "cum_sum_amount_raised": 1.8618080000000008
+                    },
+                    {
+                        "investment_date": "2017-02-01",
+                        "amount_raised": 0.08998900000000001,
+                        "cum_sum_amount_raised": 1.951797000000001
+                    },
+                    {
+                        "investment_date": "2017-03-01",
+                        "amount_raised": 0.17286200000000002,
+                        "cum_sum_amount_raised": 2.1246590000000007
+                    },
+                    {
+                        "investment_date": "2017-04-01",
+                        "amount_raised": 0.17115800000000003,
+                        "cum_sum_amount_raised": 2.295817000000001
+                    },
+                    {
+                        "investment_date": "2017-05-01",
+                        "amount_raised": 0.4421689999999999,
+                        "cum_sum_amount_raised": 2.7379860000000007
+                    },
+                    {
+                        "investment_date": "2017-06-01",
+                        "amount_raised": 0.632432,
+                        "cum_sum_amount_raised": 3.370418000000001
+                    },
+                    {
+                        "investment_date": "2017-07-01",
+                        "amount_raised": 0.6232460000000001,
+                        "cum_sum_amount_raised": 3.9936640000000008
+                    },
+                    {
+                        "investment_date": "2017-08-01",
+                        "amount_raised": 0.48412099999999997,
+                        "cum_sum_amount_raised": 4.477785000000001
+                    },
+                    {
+                        "investment_date": "2017-09-01",
+                        "amount_raised": 0.812842,
+                        "cum_sum_amount_raised": 5.290627000000001
+                    },
+                    {
+                        "investment_date": "2017-10-01",
+                        "amount_raised": 0.755773,
+                        "cum_sum_amount_raised": 6.0464
+                    },
+                    {
+                        "investment_date": "2017-11-01",
+                        "amount_raised": 0.6007659999999999,
+                        "cum_sum_amount_raised": 6.647166
+                    },
+                    {
+                        "investment_date": "2017-12-01",
+                        "amount_raised": 1.4374099999999999,
+                        "cum_sum_amount_raised": 8.084576
+                    },
+                    {
+                        "investment_date": "2018-01-01",
+                        "amount_raised": 0.9308800000000003,
+                        "cum_sum_amount_raised": 9.015456
+                    },
+                    {
+                        "investment_date": "2018-02-01",
+                        "amount_raised": 0.8018900000000001,
+                        "cum_sum_amount_raised": 9.817346
+                    },
+                    {
+                        "investment_date": "2018-03-01",
+                        "amount_raised": 2.9662549999999968,
+                        "cum_sum_amount_raised": 12.783600999999997
+                    },
+                    {
+                        "investment_date": "2018-04-01",
+                        "amount_raised": 1.3171899999999996,
+                        "cum_sum_amount_raised": 14.100790999999997
+                    },
+                    {
+                        "investment_date": "2018-05-01",
+                        "amount_raised": 0.8497099999999997,
+                        "cum_sum_amount_raised": 14.950500999999997
+                    },
+                    {
+                        "investment_date": "2018-06-01",
+                        "amount_raised": 6.032749999999998,
+                        "cum_sum_amount_raised": 20.983250999999996
+                    },
+                    {
+                        "investment_date": "2018-07-01",
+                        "amount_raised": 0.5069200000000001,
+                        "cum_sum_amount_raised": 21.490170999999997
+                    },
+                    {
+                        "investment_date": "2018-08-01",
+                        "amount_raised": 1.1000750000000001,
+                        "cum_sum_amount_raised": 22.590245999999997
+                    },
+                    {
+                        "investment_date": "2018-09-01",
+                        "amount_raised": 0.346931,
+                        "cum_sum_amount_raised": 22.937177
+                    },
+                    {
+                        "investment_date": "2018-10-01",
+                        "amount_raised": 0.6089959999999999,
+                        "cum_sum_amount_raised": 23.546173
+                    },
+                    {
+                        "investment_date": "2018-11-01",
+                        "amount_raised": 0.24739,
+                        "cum_sum_amount_raised": 23.793563
+                    },
+                    {
+                        "investment_date": "2018-12-01",
+                        "amount_raised": 0.532638,
+                        "cum_sum_amount_raised": 24.326200999999998
+                    },
+                    {
+                        "investment_date": "2019-01-01",
+                        "amount_raised": 0.2111,
+                        "cum_sum_amount_raised": 24.537300999999996
+                    },
+                    {
+                        "investment_date": "2019-02-01",
+                        "amount_raised": 0.26,
+                        "cum_sum_amount_raised": 24.797300999999997
+                    },
+                    {
+                        "investment_date": "2019-03-01",
+                        "amount_raised": 0.1892,
+                        "cum_sum_amount_raised": 24.986500999999997
+                    },
+                    {
+                        "investment_date": "2019-04-01",
+                        "amount_raised": 0.6056500000000001,
+                        "cum_sum_amount_raised": 25.592150999999998
+                    },
+                    {
+                        "investment_date": "2019-05-01",
+                        "amount_raised": 1.2949199999999998,
+                        "cum_sum_amount_raised": 26.887071
+                    },
+                    {
+                        "investment_date": "2019-06-01",
+                        "amount_raised": 0.34843,
+                        "cum_sum_amount_raised": 27.235501
+                    },
+                    {
+                        "investment_date": "2019-07-01",
+                        "amount_raised": 0.26431000000000004,
+                        "cum_sum_amount_raised": 27.499811
+                    },
+                    {
+                        "investment_date": "2019-08-01",
+                        "amount_raised": 0.19693000000000002,
+                        "cum_sum_amount_raised": 27.696741
+                    },
+                    {
+                        "investment_date": "2019-09-01",
+                        "amount_raised": 0.18474000000000002,
+                        "cum_sum_amount_raised": 27.881481
+                    },
+                    {
+                        "investment_date": "2019-10-01",
+                        "amount_raised": 0.3380200000000001,
+                        "cum_sum_amount_raised": 28.219501
+                    },
+                    {
+                        "investment_date": "2019-11-01",
+                        "amount_raised": 0.22593,
+                        "cum_sum_amount_raised": 28.445431000000003
+                    },
+                    {
+                        "investment_date": "2019-12-01",
+                        "amount_raised": 0.44942000000000004,
+                        "cum_sum_amount_raised": 28.894851000000003
+                    },
+                    {
+                        "investment_date": "2020-01-01",
+                        "amount_raised": 0.18000000000000002,
+                        "cum_sum_amount_raised": 29.074851000000002
+                    },
+                    {
+                        "investment_date": "2020-02-01",
+                        "amount_raised": 0.28872000000000003,
+                        "cum_sum_amount_raised": 29.363571000000004
+                    },
+                    {
+                        "investment_date": "2020-03-01",
+                        "amount_raised": 0.47778,
+                        "cum_sum_amount_raised": 29.841351000000003
+                    },
+                    {
+                        "investment_date": "2020-04-01",
+                        "amount_raised": 0.19905,
+                        "cum_sum_amount_raised": 30.040401000000003
+                    },
+                    {
+                        "investment_date": "2020-05-01",
+                        "amount_raised": 0.37862,
+                        "cum_sum_amount_raised": 30.419021000000004
+                    },
+                    {
+                        "investment_date": "2020-06-01",
+                        "amount_raised": 0.26041000000000003,
+                        "cum_sum_amount_raised": 30.679431000000005
+                    },
+                    {
+                        "investment_date": "2020-07-01",
+                        "amount_raised": 0.2911300000000001,
+                        "cum_sum_amount_raised": 30.970561000000004
+                    },
+                    {
+                        "investment_date": "2020-08-01",
+                        "amount_raised": 0.4250900000000001,
+                        "cum_sum_amount_raised": 31.395651000000004
+                    },
+                    {
+                        "investment_date": "2020-09-01",
+                        "amount_raised": 0.20791999999999997,
+                        "cum_sum_amount_raised": 31.603571000000006
+                    },
+                    {
+                        "investment_date": "2020-10-01",
+                        "amount_raised": 0.7621700000000001,
+                        "cum_sum_amount_raised": 32.36574100000001
+                    },
+                    {
+                        "investment_date": "2020-11-01",
+                        "amount_raised": 0.26365000000000005,
+                        "cum_sum_amount_raised": 32.629391000000005
+                    },
+                    {
+                        "investment_date": "2020-12-01",
+                        "amount_raised": 0.6609200000000001,
+                        "cum_sum_amount_raised": 33.290311
+                    },
+                    {
+                        "investment_date": "2021-01-01",
+                        "amount_raised": 1.1715799999999998,
+                        "cum_sum_amount_raised": 34.461891
+                    },
+                    {
+                        "investment_date": "2021-02-01",
+                        "amount_raised": 1.6476499999999992,
+                        "cum_sum_amount_raised": 36.109541
+                    },
+                    {
+                        "investment_date": "2021-03-01",
+                        "amount_raised": 2.636789999999999,
+                        "cum_sum_amount_raised": 38.746331
+                    },
+                    {
+                        "investment_date": "2021-04-01",
+                        "amount_raised": 1.6374299999999986,
+                        "cum_sum_amount_raised": 40.383761
+                    },
+                    {
+                        "investment_date": "2021-05-01",
+                        "amount_raised": 3.5556099999999966,
+                        "cum_sum_amount_raised": 43.939370999999994
+                    },
+                    {
+                        "investment_date": "2021-06-01",
+                        "amount_raised": 2.2561399999999994,
+                        "cum_sum_amount_raised": 46.195510999999996
+                    },
+                    {
+                        "investment_date": "2021-07-01",
+                        "amount_raised": 2.627449999999999,
+                        "cum_sum_amount_raised": 48.82296099999999
+                    },
+                    {
+                        "investment_date": "2021-08-01",
+                        "amount_raised": 3.2047899999999996,
+                        "cum_sum_amount_raised": 52.027750999999995
+                    },
+                    {
+                        "investment_date": "2021-09-01",
+                        "amount_raised": 3.139909999999997,
+                        "cum_sum_amount_raised": 55.167660999999995
+                    },
+                    {
+                        "investment_date": "2021-10-01",
+                        "amount_raised": 3.7490749999999964,
+                        "cum_sum_amount_raised": 58.91673599999999
+                    },
+                    {
+                        "investment_date": "2021-11-01",
+                        "amount_raised": 7.074709999999997,
+                        "cum_sum_amount_raised": 65.991446
+                    },
+                    {
+                        "investment_date": "2021-12-01",
+                        "amount_raised": 3.6633099999999983,
+                        "cum_sum_amount_raised": 69.65475599999999
+                    },
+                    {
+                        "investment_date": "2022-01-01",
+                        "amount_raised": 2.587169999999999,
+                        "cum_sum_amount_raised": 72.24192599999999
+                    },
+                    {
+                        "investment_date": "2022-02-01",
+                        "amount_raised": 2.795436900000001,
+                        "cum_sum_amount_raised": 75.03736289999999
+                    },
+                    {
+                        "investment_date": "2022-03-01",
+                        "amount_raised": 3.6773499999999983,
+                        "cum_sum_amount_raised": 78.7147129
+                    },
+                    {
+                        "investment_date": "2022-04-01",
+                        "amount_raised": 1.9792999999999994,
+                        "cum_sum_amount_raised": 80.69401289999999
+                    },
+                    {
+                        "investment_date": "2022-05-01",
+                        "amount_raised": 3.0496499999999993,
+                        "cum_sum_amount_raised": 83.74366289999999
+                    },
+                    {
+                        "investment_date": "2022-06-01",
+                        "amount_raised": 1.30391,
+                        "cum_sum_amount_raised": 85.04757289999999
+                    },
+                    {
+                        "investment_date": "2022-07-01",
+                        "amount_raised": 0.9739999999999999,
+                        "cum_sum_amount_raised": 86.0215729
+                    },
+                    {
+                        "investment_date": "2022-08-01",
+                        "amount_raised": 1.1571,
+                        "cum_sum_amount_raised": 87.1786729
+                    },
+                    {
+                        "investment_date": "2022-09-01",
+                        "amount_raised": 1.5936399999999997,
+                        "cum_sum_amount_raised": 88.77231289999999
+                    },
+                    {
+                        "investment_date": "2022-10-01",
+                        "amount_raised": 1.14882,
+                        "cum_sum_amount_raised": 89.92113289999999
+                    },
+                    {
+                        "investment_date": "2022-11-01",
+                        "amount_raised": 1.1347649999999994,
+                        "cum_sum_amount_raised": 91.05589789999999
+                    },
+                    {
+                        "investment_date": "2022-12-01",
+                        "amount_raised": 0.723,
+                        "cum_sum_amount_raised": 91.77889789999999
+                    },
+                    {
+                        "investment_date": "2023-01-01",
+                        "amount_raised": 0.5787909999999998,
+                        "cum_sum_amount_raised": 92.35768889999999
+                    },
+                    {
+                        "investment_date": "2023-02-01",
+                        "amount_raised": 0.8774700000000003,
+                        "cum_sum_amount_raised": 93.23515889999999
+                    },
+                    {
+                        "investment_date": "2023-03-01",
+                        "amount_raised": 0.7932489999999998,
+                        "cum_sum_amount_raised": 94.02840789999999
+                    },
+                    {
+                        "investment_date": "2023-04-01",
+                        "amount_raised": 0.5472500000000001,
+                        "cum_sum_amount_raised": 94.5756579
+                    },
+                    {
+                        "investment_date": "2023-05-01",
+                        "amount_raised": 0.6038999999999999,
+                        "cum_sum_amount_raised": 95.17955789999999
+                    },
+                    {
+                        "investment_date": "2023-06-01",
+                        "amount_raised": 0.343982,
+                        "cum_sum_amount_raised": 95.52353989999999
+                    },
+                    {
+                        "investment_date": "2023-07-01",
+                        "amount_raised": 0.4600000000000002,
+                        "cum_sum_amount_raised": 95.98353989999998
+                    },
+                    {
+                        "investment_date": "2023-08-01",
+                        "amount_raised": 0.2658000000000001,
+                        "cum_sum_amount_raised": 96.24933989999998
+                    }
+                ],
+                "request_max_result_size_bytes": 268435456
+            },
+            "execution_failed": null
+        }
+    }
+}

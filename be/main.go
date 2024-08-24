@@ -51,6 +51,9 @@ func apiHandler(e *echo.Echo) {
 	e.GET("/btc_gold", api.BtcGoldAgressApi)
 	e.GET("/sp500", sp500.Sp500)
 
+	e.GET("/api/data/funding_market_core", api.FundingMarketCore)
+	e.GET("/api/data/btc_holder", api.BtcHolder)
+
 	e.GET("/api/btc_eth_static", api.BtcEthStatic)
 	e.GET("/api/storage", api.StorageFile)
 }

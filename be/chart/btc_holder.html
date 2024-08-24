@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timeline Chart with ApexCharts</title>
+    <!-- ApexCharts CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/apexcharts/dist/apexcharts.css">
+</head>
+
+<body>
+    <div id="chart"></div>
+
+    <!-- ApexCharts JS -->
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <!-- Chart configuration and rendering -->
+    <script>
+        function loadData() {
+            const requestOptions = {
+                method: "GET",
+                redirect: "follow"
+            };
+            fetch("/api/data/btc_holder", requestOptions)
+                .then((response) => response.text())
+                .then((result) => {
+                    var jsonObj = JSON.parse(result);
+                    drawChart(jsonObj);
+
+                })
+                .catch((error) => console.error(error));
+        }
+        // Function to convert Unix timestamp to ISO date string
+        function unixToISO(unixTimestamp) {
+            return new Date(unixTimestamp * 1000).toISOString();
+        }
+
+        function drawChart(data) {
+
+            // Process data
+            var seriesCountsData = data.counts.map(function (dataPoint) {
+                return {
+                    x: unixToISO(dataPoint.t),
+                    y: (dataPoint.v / 1000 / 1000).toFixed(0)
+                };
+            });
+            var seriesPricesData = data.prices.map(function (dataPoint) {
+                return {
+                    x: unixToISO(dataPoint.t),
+                    y: (dataPoint.v).toFixed(0)
+                };
+            });
+
+            // ApexCharts options
+            var options = {
+                series: [{
+                        name: 'Total Addresses',
+                        data: seriesCountsData
+                    },
+                    {
+                        name: 'Price',
+                        data: seriesPricesData
+                    },
+                ],
+                chart: {
+                    type: 'line', // Use 'line' or 'scatter' for a timeline
+                    height: 650
+                },
+                stroke: {
+                    width: [2, 2]
+                },
+                xaxis: {
+                    type: 'datetime',
+                    labels: {
+                        format: 'dd MMM yyyy'
+                    }
+                },
+                yaxis: [{
+                        seriesName: 'Total Addresses',
+                        title: {
+                            text: 'Millions'
+                        }
+                    },
+                    {
+                        seriesName: 'Price',
+                        opposite: true,
+                        title: {
+                            text: 'USD'
+                        }
+                    }
+                ],
+                title: {
+                    text: 'Timeline Chart',
+                    align: 'left'
+                },
+                colors: ["#f7931a", "red"]
+            };
+
+            // Create the chart
+            var chart = new ApexCharts(document.querySelector("#chart"), options);
+            chart.render();
+        }
+        loadData();
+    </script>
+</body>
+
+</html>

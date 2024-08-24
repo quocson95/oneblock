@@ -5,16 +5,19 @@ import (
 	"os"
 )
 
-type MoneyId string
+type DataRawID string
 
 const (
-	MoneyM1Id MoneyId = "money_supply_m1"
-	MoneyM2Id MoneyId = "money_supply_m2"
-	BtcGold   MoneyId = "btc_gold"
-	SP500Id   MoneyId = "sp500"
+	MoneyM1Id           DataRawID = "money_supply_m1"
+	MoneyM2Id           DataRawID = "money_supply_m2"
+	BtcGold             DataRawID = "btc_gold"
+	SP500Id             DataRawID = "sp500"
+	FundingMarketCoreId DataRawID = "funding_market_corelation"
+	HolderBtcCountId    DataRawID = "holder_btc_count"
+	HolderBtcPriceId    DataRawID = "holder_btc_price"
 )
 
-func Load(id MoneyId, fn func(data []byte) error) error {
+func Load(id DataRawID, fn func(data []byte) error) error {
 	data, err := os.ReadFile(fmt.Sprintf("raw_data/%s.json", id))
 	if err != nil {
 		return err
