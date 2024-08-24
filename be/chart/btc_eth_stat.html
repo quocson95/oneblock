@@ -99,7 +99,7 @@
         async function fetchBtcData() {
             try {
                 // Fetch current price and price change from CoinGecko
-                const data = await fetch('http://173.249.28.252:8080/api/btc_eth_static');
+                const data = await fetch('https://api.oneblock.vn/be/data/btc_eth_static');
                 // console.log(data)
                 // const btcEthStatic = JSON.parse( data.body);
                 const btcEthStatic = await data.json()

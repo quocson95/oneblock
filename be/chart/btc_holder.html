@@ -21,7 +21,7 @@
                 method: "GET",
                 redirect: "follow"
             };
-            fetch("/api/data/btc_holder", requestOptions)
+            fetch("https://api.oneblock.vn/be/data/btc_holder", requestOptions)
                 .then((response) => response.text())
                 .then((result) => {
                     var jsonObj = JSON.parse(result);
@@ -54,13 +54,13 @@
             // ApexCharts options
             var options = {
                 series: [{
-                        name: 'Total Addresses',
-                        data: seriesCountsData
-                    },
-                    {
-                        name: 'Price',
-                        data: seriesPricesData
-                    },
+                    name: 'Total Addresses',
+                    data: seriesCountsData
+                },
+                {
+                    name: 'Price',
+                    data: seriesPricesData
+                },
                 ],
                 chart: {
                     type: 'line', // Use 'line' or 'scatter' for a timeline
@@ -76,18 +76,18 @@
                     }
                 },
                 yaxis: [{
-                        seriesName: 'Total Addresses',
-                        title: {
-                            text: 'Millions'
-                        }
-                    },
-                    {
-                        seriesName: 'Price',
-                        opposite: true,
-                        title: {
-                            text: 'USD'
-                        }
+                    seriesName: 'Total Addresses',
+                    title: {
+                        text: 'Millions'
                     }
+                },
+                {
+                    seriesName: 'Price',
+                    opposite: true,
+                    title: {
+                        text: 'USD'
+                    }
+                }
                 ],
                 title: {
                     text: 'Timeline Chart',

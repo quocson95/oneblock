@@ -1,97 +1,96 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
-    <title>BTC Gold</title>
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+  <title>BTC Gold</title>
 
 
-    <link href="./assets/styles.css" rel="stylesheet" />
+  <link href="./assets/styles.css" rel="stylesheet" />
 
-    <style>
-      
-        #chart {
+  <style>
+    #chart {
       max-width: 1200px;
       margin: 35px auto;
     }
-      
-    </style>
+  </style>
 
-    <script>
-      window.Promise ||
-        document.write(
-          '<script src="https://cdn.jsdelivr.net/npm/promise-polyfill@8/dist/polyfill.min.js"><\/script>'
-        )
-      window.Promise ||
-        document.write(
-          '<script src="https://cdn.jsdelivr.net/npm/eligrey-classlist-js-polyfill@1.2.20171210/classList.min.js"><\/script>'
-        )
-      window.Promise ||
-        document.write(
-          '<script src="https://cdn.jsdelivr.net/npm/findindex_polyfill_mdn"><\/script>'
-        )
-    </script>
+  <script>
+    window.Promise ||
+      document.write(
+        '<script src="https://cdn.jsdelivr.net/npm/promise-polyfill@8/dist/polyfill.min.js"><\/script>'
+      )
+    window.Promise ||
+      document.write(
+        '<script src="https://cdn.jsdelivr.net/npm/eligrey-classlist-js-polyfill@1.2.20171210/classList.min.js"><\/script>'
+      )
+    window.Promise ||
+      document.write(
+        '<script src="https://cdn.jsdelivr.net/npm/findindex_polyfill_mdn"><\/script>'
+      )
+  </script>
 
-    
-    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
-    
 
-    <script>
-      // Replace Math.random() with a pseudo-random number generator to get reproducible results in e2e tests
-      // Based on https://gist.github.com/blixt/f17b47c62508be59987b
-      var _seed = 42;
-      Math.random = function() {
-        _seed = _seed * 16807 % 2147483647;
-        return (_seed - 1) / 2147483646;
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+
+
+  <script>
+    // Replace Math.random() with a pseudo-random number generator to get reproducible results in e2e tests
+    // Based on https://gist.github.com/blixt/f17b47c62508be59987b
+    var _seed = 42;
+    Math.random = function () {
+      _seed = _seed * 16807 % 2147483647;
+      return (_seed - 1) / 2147483646;
+    };
+  </script>
+
+
+</head>
+
+<body>
+  <div id="chart"></div>
+  <div id="chart2"></div>
+  <script>
+    function loadData() {
+      const requestOptions = {
+        method: "GET",
+        redirect: "follow"
       };
-    </script>
+      fetch("https://api.oneblock.vn/be/data/btc_gold", requestOptions)
+        .then((response) => response.text())
+        .then((result) => {
+          var jsonObj = JSON.parse(result);
+          console.log(jsonObj);
+          drawChart(jsonObj);
+          drawChart2(jsonObj)
+        })
+        .catch((error) => console.error(error));
+    }
 
-    
-  </head>
 
-  <body>
-     <div id="chart"></div>
-     <div id="chart2"></div>
-    <script>
-        function loadData() {
-          const requestOptions = {
-  method: "GET",
-  redirect: "follow"
-};
-      fetch("/btc_gold", requestOptions)
-  .then((response) => response.text())
-  .then((result) => {
-    var jsonObj = JSON.parse(result);
-    console.log(jsonObj);
-    drawChart(jsonObj);
-    drawChart2(jsonObj)
-  })
-  .catch((error) => console.error(error));
-}
-        
-
-      function drawChart(jsonData) { 
-        var options = {
-          series: [{
+    function drawChart(jsonData) {
+      var options = {
+        series: [{
           name: 'BTC',
           type: 'area',
-          data: jsonData.btc_price 
+          data: jsonData.btc_price
         }, {
           name: 'Gold',
           type: 'line',
           data: jsonData.gold_price
         }],
-          chart: {
+        chart: {
           height: 350,
           type: 'line',
         },
         stroke: {
           curve: 'smooth',
-          width: [2,2]
+          width: [2, 2]
         },
         fill: {
-          type:'solid',
+          type: 'solid',
           opacity: [0.35, 1],
         },
         labels: jsonData.labels,
@@ -116,27 +115,27 @@
           intersect: false,
           y: {
             formatter: function (y) {
-              if(typeof y !== "undefined") {
-                return  y.toFixed(0) + " points";
+              if (typeof y !== "undefined") {
+                return y.toFixed(0) + " points";
               }
               return y;
             }
           }
         }
-        };
+      };
 
-        var chart = new ApexCharts(document.querySelector("#chart"), options);
-        chart.render();
-      
-      }
+      var chart = new ApexCharts(document.querySelector("#chart"), options);
+      chart.render();
 
-      function drawChart2(jsonData) {
-        var options = {
-          series: [{
-            name: "Gold Correction",
-            data: jsonData.btc_correlation 
+    }
+
+    function drawChart2(jsonData) {
+      var options = {
+        series: [{
+          name: "Gold Correction",
+          data: jsonData.btc_correlation
         }],
-          chart: {
+        chart: {
           height: 350,
           type: 'line',
           zoom: {
@@ -162,17 +161,18 @@
         xaxis: {
           categories: jsonData.labels,
         }
-        };
+      };
 
-        var chart = new ApexCharts(document.querySelector("#chart2"), options);
-        chart.render();
-      }
+      var chart = new ApexCharts(document.querySelector("#chart2"), options);
+      chart.render();
+    }
 
-      loadData();
-      
-      
-    </script>
+    loadData();
 
-    
-  </body>
+
+  </script>
+
+
+</body>
+
 </html>

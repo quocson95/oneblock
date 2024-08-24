@@ -44,20 +44,20 @@ func apiHandler(e *echo.Echo) {
 		c.JSON(http.StatusOK, "ok")
 		return nil
 	})
-	e.GET("/btc_gold_raw", api.BtcGold)
-	e.GET("/m1", api.MoneySupplyM1)
-	e.GET("/m2", api.MoneySupplyM2)
-	e.GET("/money_supply", api.MoneySupplyAgress)
-	e.GET("/btc_gold", api.BtcGoldAgressApi)
-	e.GET("/sp500", sp500.Sp500)
+	e.GET("/be/data/btc_gold_raw", api.BtcGold)
+	e.GET("/be/data/m1", api.MoneySupplyM1)
+	e.GET("/be/data/m2", api.MoneySupplyM2)
+	e.GET("/be/data/money_supply", api.MoneySupplyAgress)
+	e.GET("/be/data/btc_gold", api.BtcGoldAgressApi)
+	e.GET("/be/data/sp500", sp500.Sp500)
 
-	e.GET("/api/data/funding_market_core", api.FundingMarketCore)
-	e.GET("/api/data/btc_holder", api.BtcHolder)
+	e.GET("/be/data/funding_market_core", api.FundingMarketCore)
+	e.GET("/be/data/btc_holder", api.BtcHolder)
 
-	e.GET("/api/btc_eth_static", api.BtcEthStatic)
-	e.GET("/api/storage", api.StorageFile)
+	e.GET("/be/data/btc_eth_static", api.BtcEthStatic)
+	e.GET("/be/data/storage", api.StorageFile)
 }
 
 func static(e *echo.Echo) {
-	e.Static("chart", "chart")
+	e.Static("/be/chart", "chart")
 }
