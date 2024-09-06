@@ -1,16 +1,13 @@
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests" />
+<!doctypehtml>
+    <html lang=en>
+    <meta charset=UTF-8>
+    <meta content="width=device-width,initial-scale=1" name=viewport>
     <title>Crypto</title>
     <style>
         body {
             font-family: Arial, sans-serif;
             text-align: center;
-            margin: 50px;
+            margin: 50px
         }
 
         .container {
@@ -19,113 +16,161 @@
             border: 1px solid #ddd;
             padding: 20px;
             border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 0 10px rgba(0, 0, 0, .1)
         }
 
         h1 {
-            margin: 0 0 20px;
+            margin: 0 0 20px
         }
 
-        .price,
-        .change {
+        .change,
+        .price {
             margin: 10px 0;
-            font-size: 1.2em;
+            font-size: 1.2em
         }
 
         .change.positive {
-            color: green;
+            color: green
         }
 
         .change.negative {
-            color: red;
+            color: red
+        }
+
+        table {
+            font-family: arial, sans-serif;
+            border-collapse: collapse;
+            width: 100%
+        }
+
+        td,
+        th {
+            border-bottom: 1px solid #ddd;
+            text-align: left;
+            vertical-align: middle
+        }
+
+        .divin {
+            display: inline-block
+        }
+
+        img {
+            vertical-align: middle
+        }
+
+        .img-downtrend {
+            content: url(https://api.oneblock.vn/be/data/storage?bucket=lichkinhte&name=downtrend_64x64.png)
+        }
+
+        .img-uptrend {
+            content: url(https://api.oneblock.vn/be/data/storage?bucket=lichkinhte&name=uptrend_64x64.png)
+        }
+
+        .img-eth-gas {
+            content: url(https://api.oneblock.vn/be/data/storage?bucket=lichkinhte&name=eth_gas_64x64.jpg)
         }
     </style>
-</head>
-
-<body>
-    <!-- <div class="container">
-        <h1>Crypto</h1>
-        <div class="price">
-            BTC: <span id="btc-price">Loading...</span>
-        </div>
-        <div class="change">
-            BTC 1h: <span id="btc-change-1h">Loading...</span>
-        </div>
-        <div class="change">
-            BTC 24h: <span id="btc-change-24h">Loading...</span>
-        </div>
-        <div class="price">
-            ETH Gas: <span id="eth-gas">Loading...</span>
-        </div>
-    </div> -->
-    <table style="text-align: left;">
+    <h3>Thông tin thị trường</h3>
+    <table style=text-align:left>
         <tr>
-            <th></th>
-            <th></th>
-        </tr>
-        <tr>
-            <td>BTC:</td>
             <td>
-                <div class="price"> <span id="btc-price">Loading...</span> </div>
-            </td>
-        </tr>
-        <tr>
-            <td>BTC 1h:</td>
-            <td>
-                <div class="change">
-                    <span id="btc-change-1h">Loading...</span>
+                <div class=divin><img height=32 loading=lazy width=32
+                        src="https://api.oneblock.vn/be/data/storage?bucket=lichkinhte&name=btc_64x64.png">
+                    <p class=divin>BTC
                 </div>
-            </td>
-        </tr>
-        <tr>
-            <td>BTC 24h:</td>
             <td>
-                <div class="change">
-                    <span id="btc-change-24h">Loading...</span>
-                </div>
-            </td>
-        </tr>
+                <div class=price><span id=btc-price>Loading...</span></div>
         <tr>
-            <td> ETH Gas:</td>
             <td>
-                <div class="price">
-                    <span id="eth-gas">Loading...</span>
+                <div class=divin><img height=32 loading=lazy width=32 id=img-btc-change-1h>
+                    <p class=divin>BTC 1H
                 </div>
-            </td>
-        </tr>
+            <td>
+                <div class=change><span id=btc-change-1h>Loading...</span></div>
+        <tr>
+            <td>
+                <div class=divin><img height=32 loading=lazy width=32 id=img-btc-change-24h>
+                    <p class=divin>BTC 24H
+                </div>
+            <td>
+                <div class=change><span id=btc-change-24h>Loading...</span></div>
+        <tr>
+            <td>
+                <div class=divin><img height=32 loading=lazy width=32 id=img-btc-change-24h class=img-eth-gas>
+                    <p class=divin>ETH Gas
+                </div>
+            <td>
+                <div class=price><span id=eth-gas>Loading...</span></div>
     </table>
-
-    <script>
+    <script>var btcData = null;
         async function fetchBtcData() {
             try {
-                // Fetch current price and price change from CoinGecko
-                const data = await fetch('https://api.oneblock.vn/be/data/btc_eth_static');
-                // console.log(data)
-                // const btcEthStatic = JSON.parse( data.body);
-                const btcEthStatic = await data.json()
-                // Update HTML
-                document.getElementById('btc-price').textContent = `${parseFloat(btcEthStatic.price).toFixed(0)}$`;
-                const priceChange = parseFloat(btcEthStatic.priceChange1H).toFixed(2);
-                updateChange('btc-change-1h', priceChange);
-                const priceChange24h = parseFloat(btcEthStatic.priceChange24H).toFixed(2);
-                updateChange('btc-change-24h', priceChange24h);
-                document.getElementById('eth-gas').textContent = `${parseFloat(btcEthStatic.result.ProposeGasPrice).toFixed(2)}`;
+                const data = await fetch(
+                    "https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT"
+                );
+                btcData = await data.json();
+                document.getElementById("btc-price").textContent = `${parseFloat(
+                    btcData.price
+                ).toFixed(0)} $`;
+                fetchBtcPriceChange(btcData);
             } catch (error) {
-                console.error('Error fetching BTC data:', error);
-                document.getElementById('btc-price').textContent = 'Error';
-                document.getElementById('btc-change').textContent = 'Error';
+                console.error("Error fetching BTC data:", error);
+                document.getElementById("btc-price").textContent = "Error";
+                document.getElementById("btc-change").textContent = "Error";
             }
+        }
+
+        async function fetchBtcPriceChange(btcCurrent) {
+            const data = await fetch(
+                "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=1"
+            );
+            const btcData = await data.json();
+            var prices = btcData.prices;
+            prices.sort((a, b) => b[0] - a[0]);
+            var btcChange1h = 0;
+            var btcChange24h = 0;
+            const nowMiliUnix = Math.floor(Date.now());
+            var priceBtcCurrent = parseFloat(btcCurrent.price);
+            console.log(prices);
+            prices.forEach((el) => {
+                const timestamp = el[0];
+                const price = el[1];
+                if (nowMiliUnix - timestamp >= 3600000 && btcChange1h == 0) {
+                    btcChange1h = caclPercentChange(priceBtcCurrent, price);
+                    console.log(btcChange1h);
+                    updateChange("btc-change-1h", btcChange1h);
+                }
+                if (nowMiliUnix - timestamp >= 82800000) {
+                    btcChange24h = caclPercentChange(priceBtcCurrent, price);
+                    console.log(btcChange24h);
+                    updateChange("btc-change-24h", btcChange24h);
+                }
+            });
+        }
+
+        async function fetchEthGas() {
+            const data = await fetch(
+                "https://api.etherscan.io/api?module=gastracker&action=gasoracle&apikey=FU7Q6XQRHHEX3Q81B5CWM78SKV4HMHFDPM"
+            );
+            const ethGas = await data.json();
+            document.getElementById("eth-gas").textContent = `${parseFloat(
+                ethGas.result.ProposeGasPrice
+            ).toFixed(2)}`;
         }
 
         function updateChange(id, priceChange) {
             const changeElement = document.getElementById(id);
             changeElement.textContent = `${priceChange}%`;
-            changeElement.className = priceChange >= 0 ? 'change positive' : 'change negative';
+            changeElement.className =
+                priceChange >= 0 ? "change positive" : "change negative";
+            const idImg = "img-" + id;
+            const imgElement = document.getElementById(idImg);
+            imgElement.className = priceChange < 0 ? "img-downtrend" : "img-uptrend";
         }
 
-        // Fetch data when page loads
-        fetchBtcData();
-    </script>
-</body>
+        function caclPercentChange(priceBtcCurrent, price) {
+            return (((price - priceBtcCurrent) / priceBtcCurrent) * 100).toFixed(2);
+        }
 
-</html>
+        fetchBtcData();
+        fetchEthGas();</script>
