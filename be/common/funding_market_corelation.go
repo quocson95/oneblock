@@ -43,6 +43,7 @@ type FundingMarketCore struct {
 	Dates              []string  `json:"dates,omitempty"`
 	AmountRaises       []float64 `json:"amountRaises,omitempty"`
 	CumSumAmountRaises []float64 `json:"cumSumAmountRaises,omitempty"`
+	BtcPrice           []float64 `json:"btc_price,omitempty"`
 }
 
 func (f *FundingMarketCore) Load(fromDate time.Time) error {
