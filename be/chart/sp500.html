@@ -78,13 +78,14 @@
         }, {
           name: 'SP500',
           type: 'line',
-          data: jsonData.sp_500
+          data: jsonData.sp_500,
+          logarithmic: true
         },
-        {
-          name: 'M2',
-          type: 'line',
-          data: jsonData.m2
-        }
+          // {
+          //   name: 'M2',
+          //   type: 'line',
+          //   data: jsonData.m2
+          // }
         ],
         chart: {
           height: 650,
@@ -113,8 +114,29 @@
             title: {
               text: 'Points',
             },
+            // logarithmic: true
           },
         ],
+        xaxis: {
+          labels: {
+            style: {
+              colors: '#000000', // Text color
+              fontSize: '8px',  // Font size
+              fontFamily: 'Helvetica, Arial, sans-serif' // Font family
+            },
+            // formatter: function (value) {
+            //   return value; // Transform labels to uppercase
+            // }
+            formatter: (value) => {
+              if (!value) {
+                return value;
+              }
+              // console.log(value);
+              // return value.substring(2);
+              return value;
+            },
+          }
+        },
         tooltip: {
           shared: true,
           intersect: false,
