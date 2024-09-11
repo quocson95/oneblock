@@ -74,6 +74,11 @@ func (m *MoneyAgrees) Agresss(m1, m2 Money, btc CorrelationData, fromTime time.T
 			break
 		}
 		k := fmt.Sprintf("%d_%d", timeCheck.Year(), timeCheck.Month())
+
+		if filterM1[k] < 1 || filterM2[k] < 1 {
+			timeCheck = timeCheck.AddDate(0, 1, 0)
+			continue
+		}
 		m.M1 = append(m.M1, filterM1[k])
 		m.M2 = append(m.M2, filterM2[k])
 		m.Labels = append(m.Labels, fmt.Sprintf("%02d-%02d", timeCheck.Year(), timeCheck.Month()))
