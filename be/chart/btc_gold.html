@@ -34,6 +34,7 @@
 
 
   <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+  <script src="./format.js"></script>
 
 
   <script>
@@ -71,6 +72,7 @@
 
 
     function drawChart(jsonData) {
+
       var options = {
         series: [{
           name: 'BTC',
@@ -97,8 +99,7 @@
         markers: {
           size: 0
         },
-        yaxis: [
-          {
+        yaxis: [{
             title: {
               text: 'USD',
             },
@@ -110,6 +111,11 @@
             },
           },
         ],
+        xaxis: {
+          labels: {
+            formatter: createLabelFormatter()
+          }
+        },
         tooltip: {
           shared: true,
           intersect: false,
@@ -120,6 +126,7 @@
               }
               return y;
             }
+
           }
         }
       };
@@ -168,8 +175,6 @@
     }
 
     loadData();
-
-
   </script>
 
 

@@ -8,6 +8,7 @@
   <title>Funding Market Correlation</title>
 
   <link href="./assets/styles.css" rel="stylesheet" />
+  
 
   <style>
     #chart {
@@ -33,6 +34,8 @@
 
 
   <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+  <script src="./format.js"></script>
+
 
 
   <script>
@@ -93,6 +96,11 @@
           enabledOnSeries: [0]
         },
         labels: data.dates,
+        xaxis: {
+          labels: {
+            formatter: createLabelFormatter()
+          }
+        },
         yaxis: [{
           title: {
             text: '$ Billion',
