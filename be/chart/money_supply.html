@@ -57,7 +57,7 @@
         method: "GET",
         redirect: "follow"
       };
-      fetch("http://127.0.0.1:8080/be/data/money_supply", requestOptions)
+      fetch("https://api.oneblock.vn/be/data/money_supply", requestOptions)
         .then((response) => response.text())
         .then((result) => {
           var jsonObj = JSON.parse(result);
