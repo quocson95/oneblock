@@ -32,9 +32,10 @@ func BtcGoldAgressApi(e echo.Context) error {
 		zap.L().With(zap.Error(err)).Error("load data error")
 		return echo.NewHTTPError(http.StatusBadRequest, "load data error")
 	}
-	m := &common.BtcGoldAgress{}
+
 	t := time.Now()
 	fromTime := time.Date(t.Year()-6, t.Month(), 0, 0, 0, 0, 0, t.Location())
+	m := &common.BtcGoldAgress{}
 	m.Agresss(correlationData, fromTime)
 	return e.JSON(http.StatusOK, m)
 }

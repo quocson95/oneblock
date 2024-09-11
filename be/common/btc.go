@@ -72,6 +72,10 @@ func (m *BtcGoldAgress) Agresss(m1 CorrelationData, from time.Time) {
 			break
 		}
 		k := fmt.Sprintf("%d_%d", timeCheck.Year(), timeCheck.Month())
+		if goldCorr[k] < 1 && btcPrice[k] < 1 {
+			timeCheck = timeCheck.AddDate(0, 1, 0)
+			continue
+		}
 		m.BtcCorrelation = append(m.BtcCorrelation, btcCorr[k])
 		m.GoldPrice = append(m.GoldPrice, goldCorr[k])
 		m.BtcPrice = append(m.BtcPrice, btcPrice[k])
