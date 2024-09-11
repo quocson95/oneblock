@@ -60,6 +60,10 @@ func (s *Sp500Agress) Agress(sp500 Sp500, btc BtcGoldAgress, fromTime time.Time)
 			break
 		}
 		k := fmt.Sprintf("%d_%d", timeCheck.Year(), timeCheck.Month())
+		if filter[k] < 1 {
+			timeCheck = timeCheck.AddDate(0, 1, 0)
+			continue
+		}
 		s.Sp500 = append(s.Sp500, filter[k])
 		s.Labels = append(s.Labels, fmt.Sprintf("%02d-%02d", timeCheck.Year(), timeCheck.Month()))
 		timeCheck = timeCheck.AddDate(0, 1, 0)
