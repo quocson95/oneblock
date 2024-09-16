@@ -19,3 +19,10 @@ type BtcEth struct {
 	BtcCurrentPrice
 	EthGas
 }
+
+type EthGasWei struct {
+	TimeUnix []int     `json:"time_unix,omitempty"`
+	Labels   []string  `json:"labels,omitempty"`
+	Wei      []int     `json:"wei,omitempty"`
+	BtcPrice []float64 `json:"btc_price,omitempty"`
+}

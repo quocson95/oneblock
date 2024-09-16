@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+  <title>ETH Gas & BTC</title>
+
+
+  <link href="./assets/styles.css" rel="stylesheet" />
+
+  <style>
+    #chart {
+      max-width: 1200px;
+      margin: 35px auto;
+    }
+  </style>
+
+  <script>
+    window.Promise ||
+      document.write(
+        '<script src="https://cdn.jsdelivr.net/npm/promise-polyfill@8/dist/polyfill.min.js"><\/script>'
+      )
+    window.Promise ||
+      document.write(
+        '<script src="https://cdn.jsdelivr.net/npm/eligrey-classlist-js-polyfill@1.2.20171210/classList.min.js"><\/script>'
+      )
+    window.Promise ||
+      document.write(
+        '<script src="https://cdn.jsdelivr.net/npm/findindex_polyfill_mdn"><\/script>'
+      )
+  </script>
+
+
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+  <script src="./format.js"></script>
+
+  <script>
+    // Replace Math.random() with a pseudo-random number generator to get reproducible results in e2e tests
+    // Based on https://gist.github.com/blixt/f17b47c62508be59987b
+    var _seed = 42;
+    Math.random = function () {
+      _seed = _seed * 16807 % 2147483647;
+      return (_seed - 1) / 2147483646;
+    };
+  </script>
+
+
+</head>
+
+<body>
+  <div id="chart"></div>
+
+  <script>
+    function loadData() {
+      const requestOptions = {
+        method: "GET",
+        redirect: "follow"
+      };
+      fetch("https://api.oneblock.vn/be/data/eth_gas_history", requestOptions)
+        .then((response) => response.text())
+        .then((result) => {
+          var jsonObj = JSON.parse(result);
+          console.log(jsonObj);
+          drawChart(jsonObj);
+        })
+        .catch((error) => console.error(error));
+    }
+
+
+    function drawChart(jsonData) {
+      var options = {
+        series: [{
+          name: 'BTC',
+          type: 'area',
+          data: jsonData.btc_price
+        }, {
+          name: 'ETH Gas',
+          type: 'line',
+          data: jsonData.wei,
+          logarithmic: true
+        },
+          // {
+          //   name: 'M2',
+          //   type: 'line',
+          //   data: jsonData.m2
+          // }
+        ],
+        chart: {
+          height: 800,
+          type: 'line',
+        },
+        stroke: {
+          curve: 'smooth',
+          width: [1, 2, 2]
+        },
+        fill: {
+          type: 'solid',
+          opacity: [0.35, 1],
+        },
+        labels: jsonData.labels,
+        markers: {
+          size: 0
+        },
+        yaxis: [{
+          title: {
+            text: 'USD',
+          },
+        },
+        {
+          opposite: true,
+          title: {
+            text: 'Wei',
+          },
+          // logarithmic: true
+        },
+        ],
+        xaxis: {
+          labels: {
+            style: {
+              colors: '#000000', // Text color
+              fontSize: '8px', // Font size
+              fontFamily: 'Helvetica, Arial, sans-serif' // Font family
+            },
+            formatter: createLabelFormatter(60)
+
+          }
+        },
+        tooltip: {
+          shared: true,
+          intersect: false,
+          y: {
+            formatter: function (y) {
+              if (typeof y !== "undefined") {
+                return y.toFixed(0);
+              }
+              return y;
+            }
+          },
+        }
+      };
+
+      var chart = new ApexCharts(document.querySelector("#chart"), options);
+      chart.render();
+
+    }
+
+    loadData();
+  </script>
+
+
+</body>
+
+</html>

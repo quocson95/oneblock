@@ -56,6 +56,9 @@ func apiHandler(e *echo.Echo) {
 
 	e.GET("/be/data/btc_eth_static", api.BtcEthStatic)
 	e.GET("/be/data/storage", api.StorageFile)
+
+	e.GET("/be/data/eth_gas_history", api.EthGasHistory)
+	e.GET("/be/data/usd_vnd", api.USDVNDRate)
 }
 
 func static(e *echo.Echo) {

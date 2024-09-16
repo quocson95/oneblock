@@ -24,6 +24,7 @@ type CorrelationData struct {
 	BtcDailyPrice      [][]float64 `json:"btc_daily_price"`
 }
 type BtcGoldAgress struct {
+	Unix           []int     `json:"unix,omitempty"`
 	Labels         []string  `json:"labels,omitempty"`
 	BtcCorrelation []float64 `json:"btc_correlation,omitempty"`
 	GoldPrice      []float64 `json:"gold_price,omitempty"`
@@ -80,6 +81,7 @@ func (m *BtcGoldAgress) Agresss(m1 CorrelationData, from time.Time) {
 		m.GoldPrice = append(m.GoldPrice, goldCorr[k])
 		m.BtcPrice = append(m.BtcPrice, btcPrice[k])
 		m.Labels = append(m.Labels, fmt.Sprintf("%02d-%02d", timeCheck.Year(), timeCheck.Month()))
+		m.Unix = append(m.Unix, int(timeCheck.Unix()))
 		timeCheck = timeCheck.AddDate(0, 1, 0)
 	}
 
