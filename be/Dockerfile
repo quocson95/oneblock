@@ -1,6 +1,6 @@
 # Use the official Golang image to create a build artifact.
 # This image has the Go compiler pre-installed.
-FROM golang:1.23.0 AS builder
+FROM golang:1.23.4 AS builder
 
 # Set the Current Working Directory inside the container
 WORKDIR /app
@@ -15,21 +15,21 @@ RUN go mod download
 COPY . .
 
 # Build the Go app
-RUN go build -ldflags="-s -w" -o oneblock_collect .
-RUN chmod +x oneblock_collect
+RUN go build -ldflags="-s -w" -o oneblock_backend .
+RUN chmod +x oneblock_backend
 
 # Start a new stage from scratch
-FROM golang:1.23.0
+FROM golang:1.23.4
 
 # Set the Current Working Directory inside the container
 WORKDIR /app
 
 # Copy the Pre-built binary file from the previous stage
-COPY --from=builder /app/oneblock_collect /app/oneblock_collect
+COPY --from=builder /app/oneblock_backend /app/oneblock_backend
 COPY chart /app/chart
 COPY raw_data /app/raw_data
 COPY config.json /app/config.json
 # Expose port 8080 to the outside world
 EXPOSE 8080
 # Command to run the executable
-CMD ["/app/oneblock_collect"]
+CMD ["/app/oneblock_backend"]

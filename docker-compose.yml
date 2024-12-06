@@ -1,0 +1,13 @@
+version: '3.8'
+services:
+  backend:
+    container_name: oneblock_backend
+    build:
+      context: ./be
+    ports:
+      - "8080:8080"
+    restart: always  
+    volumes:
+      - appdata:/home/sondq/appdata
+volumes:
+  appdata:
