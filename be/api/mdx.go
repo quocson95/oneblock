@@ -33,6 +33,7 @@ var defaultHttpClient = &http.Client{
 type MdxApi struct{}
 
 func (m *MdxApi) Handler(g *gin.RouterGroup) {
+	g.GET("", m.List)
 	g.GET("/", m.List)
 	g.GET("/:id", m.Get)
 }
