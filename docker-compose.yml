@@ -1,4 +1,3 @@
-version: '3.8'
 services:
   backend:
     container_name: oneblock_backend
@@ -7,7 +6,46 @@ services:
     ports:
       - "8080:8080"
     restart: always  
+    depends_on:
+      - db
     volumes:
       - appdata:/home/sondq/appdata
+
+  landing-cms:
+    container_name: oneblock_landing_cms
+    build:
+      context: ./oneblock-landing
+    ports:
+      - "8100:80"
+    restart: always  
+    volumes:
+      - /usr/share/nginx/html/static/uploads:/home/sondq/landing-cms-public
+      - appdata:/home/sondq/appdata
+
+  landing-cms-editor:
+    container_name: oneblock_landing_cms_editor
+    build:
+      context: ./oneblock-landing-editor
+    ports:
+      - "8200:80"    
+    restart: always 
+  db:
+    image: postgres:17.2
+    restart: always
+    # set shared memory limit when using docker-compose
+    shm_size: 512mb
+    # or set shared memory limit when deploy via swarm stack
+    #volumes:
+    #  - type: tmpfs
+    #    target: /dev/shm
+    #    tmpfs:
+    #      size: 134217728 # 128*2^20 bytes = 128Mb
+    environment:
+      POSTGRES_PASSWORD: oneblock_db_pass
+    volumes:
+        - dbdata:/var/lib/postgresql/data
+    ports:
+      - "8432:5432"
 volumes:
   appdata:
+  dbdata:

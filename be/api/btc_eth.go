@@ -5,24 +5,24 @@ import (
 	"be/craw"
 	"net/http"
 
-	"github.com/labstack/echo/v4"
+	"github.com/gin-gonic/gin"
 )
 
-func BtcEthStatic(e echo.Context) error {
+func BtcEthStatic(e *gin.Context) {
 	btcPrice, err := craw.BtcPriceSummary()
 	if err != nil {
 		e.JSON(http.StatusOK, "")
-		return nil
+		return
 	}
 	ethGas, err := craw.EthGas()
 	if err != nil {
 		e.JSON(http.StatusOK, "")
-		return nil
+		return
 	}
 	btcEth := common.BtcEth{
 		BtcCurrentPrice: *btcPrice,
 		EthGas:          *ethGas,
 	}
 	e.JSON(http.StatusOK, btcEth)
-	return nil
+	return
 }

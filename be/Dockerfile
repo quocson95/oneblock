@@ -9,13 +9,20 @@ WORKDIR /app
 COPY go.mod go.sum ./
 
 # Download all dependencies. Dependencies will be cached if the go.mod and go.sum files are not changed
-RUN go mod download
+RUN --mount=type=cache,target=/go/pkg/mod/ \
+    --mount=type=bind,source=go.sum,target=go.sum \
+    --mount=type=bind,source=go.mod,target=go.mod \
+    go mod download -x
 
 # Copy the source code into the container
 COPY . .
-
+ENV GOCACHE=/root/.cache/go-build
 # Build the Go app
-RUN go build -ldflags="-s -w" -o oneblock_backend .
+RUN --mount=type=cache,target=/go/pkg/mod/ \
+--mount=type=cache,target="/root/.cache/go-build" \
+--mount=type=bind,target=. \
+go build -ldflags="-s -w" -o oneblock_backend .
+
 RUN chmod +x oneblock_backend
 
 # Start a new stage from scratch

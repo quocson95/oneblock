@@ -2,21 +2,20 @@ package api
 
 import (
 	"be/common"
+	"errors"
 	"net/http"
 	"time"
 
-	"github.com/labstack/echo/v4"
+	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 
-func BtcHolder(c echo.Context) error {
+func BtcHolder(c *gin.Context) {
 	v := &common.HolderBtc{}
 	err := v.Load(time.Now().Add(-10 * 365 * 24 * time.Hour))
 	if err != nil {
 		zap.L().With(zap.Error(err)).Error("load data error")
-		return &echo.HTTPError{
-			Code:    http.StatusBadRequest,
-			Message: "load data error"}
+		c.AbortWithError(http.StatusBadRequest, errors.New("load data error"))
 	}
-	return c.JSON(http.StatusOK, v)
+	c.JSON(http.StatusOK, v)
 }

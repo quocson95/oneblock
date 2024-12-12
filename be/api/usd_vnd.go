@@ -8,10 +8,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/labstack/echo/v4"
+	"github.com/gin-gonic/gin"
 )
 
-func USDVNDRate(c echo.Context) error {
+func USDVNDRate(c *gin.Context) {
 	usdVndRaw := common.UsdVnd{}
 	common.Load(common.USDVNDId, func(data []byte) error {
 		return json.Unmarshal(data, &usdVndRaw)
@@ -20,7 +20,7 @@ func USDVNDRate(c echo.Context) error {
 	fromTimeUnix := fromTime.Unix()
 	result := common.UsdVndBtc{}
 	if len(usdVndRaw.Chart.Result) == 0 || len(usdVndRaw.Chart.Result[0].Indicators.Quote) == 0 {
-		return c.JSON(http.StatusOK, result)
+		c.JSON(http.StatusOK, result)
 	}
 	// maxTs := int64(0)
 	holderBtc := &common.HolderBtc{}
@@ -59,5 +59,5 @@ func USDVNDRate(c echo.Context) error {
 		result.BtcPrice = append(result.BtcPrice, btcPrice)
 	}
 
-	return c.JSON(http.StatusOK, result)
+	c.JSON(http.StatusOK, result)
 }

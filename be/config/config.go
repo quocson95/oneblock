@@ -6,10 +6,11 @@ import (
 )
 
 type config struct {
-	ApiEthKey   string `json:"api_eth_key,omitempty"`
-	S3Endpoint  string `json:"s3_endpoint,omitempty"`
-	S3AccessKey string `json:"s3_access_key,omitempty"`
-	S3SecretKey string `json:"s3_secret_key,omitempty"`
+	ApiEthKey    string `json:"api_eth_key,omitempty"`
+	S3Endpoint   string `json:"s3_endpoint,omitempty"`
+	S3AccessKey  string `json:"s3_access_key,omitempty"`
+	S3SecretKey  string `json:"s3_secret_key,omitempty"`
+	PostgressDsn string `json:"postgress_dsn"`
 }
 
 var defaultConfig = &config{}

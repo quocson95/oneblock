@@ -8,7 +8,7 @@ import (
 	s3_credentials "github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/labstack/echo/v4"
+	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 
@@ -21,28 +21,15 @@ type S3Helper struct {
 	svc *s3.S3
 }
 
-type TinaCMSGet struct {
-	Media      []Media    `json:"media"`
-	Pagination Pagination `json:"pagination"`
+type S3Dirs struct {
+	Files []File `json:"files"`
+	// Directories []interface{} `json:"directories"`
 }
 
-type Media struct {
-	URL       string    `json:"url"`
-	Filename  string    `json:"filename"`
-	Size      int64     `json:"size"`
-	Type      string    `json:"type"`
-	CreatedAt time.Time `json:"createdAt"`
-	Metadata  Metadata  `json:"metadata"`
-}
-
-type Metadata struct {
-	Description string   `json:"description"`
-	Tags        []string `json:"tags"`
-}
-
-type Pagination struct {
-	Limit int64  `json:"limit"`
-	Next  string `json:"next"`
+type File struct {
+	Src      string `json:"src"`
+	Filename string `json:"filename"`
+	Size     int64  `json:"size"`
 }
 
 func (s *S3Helper) Init(endpoint, region, accessKey, secretKey string) error {
@@ -84,52 +71,50 @@ func (s *S3Helper) PreSign(method string, bucket string, nameFile string) (*S3Pr
 var DefaultS3Hepler = &S3Helper{}
 var cachePreSign = make(map[string]*S3PreSign)
 
-func StorageFile(c echo.Context) error {
-	bucket := c.QueryParam("bucket")
-	name := c.QueryParam("name")
+func StorageFile(c *gin.Context) {
+	bucket := c.Query("bucket")
+	name := c.Query("name")
 	if len(name) == 0 {
-		return listS3(c)
+		listS3(c)
+		return
 	}
 	key := bucket + name
 	v, exist := cachePreSign[key]
 	if exist && v.Expire > time.Now().Unix() {
-		return c.Redirect(http.StatusFound, v.Url)
+		c.Redirect(http.StatusFound, v.Url)
+		return
 	}
 	preSign, err := DefaultS3Hepler.PreSign(http.MethodGet, bucket, name)
 	if err != nil {
 		zap.L().With(zap.Error(err)).With(zap.String("bucket", bucket)).With(zap.String("name", name)).Error("presign failed")
-		return echo.NewHTTPError(http.StatusBadRequest, "presign failed")
+		c.AbortWithStatusJSON(http.StatusBadRequest, "presign failed")
 	}
 	cachePreSign[key] = preSign
-	return c.Redirect(http.StatusFound, preSign.Url)
+	c.Redirect(http.StatusFound, preSign.Url)
 }
 
-func listS3(c echo.Context) error {
+func listS3(c *gin.Context) {
 	svc := DefaultS3Hepler.SVC()
-	bucket := c.QueryParam("bucket")
+	bucket := c.Query("bucket")
 	lst, err := svc.ListObjectsV2(&s3.ListObjectsV2Input{
 		Bucket: aws.String(bucket),
 	})
 	if err != nil {
 		c.JSON(http.StatusOK, "")
 	}
-	// resp := &TinaCMSGet{
-	// 	Media: make([]Media, 0),
-	// 	Pagination: Pagination{
-	// 		Limit: int64(len(lst.Contents)),
-	// 		Next:  "",
-	// 	},
-	// }
-	// for _, v := range lst.Contents {
-	// 	preSign, _ := DefaultS3Hepler.PreSign(http.MethodGet, bucket, *v.Key)
+	resp := &S3Dirs{
+		Files: make([]File, 0),
+	}
+	for _, v := range lst.Contents {
+		preSign, _ := DefaultS3Hepler.PreSign(http.MethodGet, bucket, *v.Key)
 
-	// 	media := Media{
-	// 		URL:      preSign.Url,
-	// 		Filename: *v.Owner.DisplayName,
-	// 		Size:     *v.Size,
-	// 	}
-	// 	resp.Media = append(resp.Media, media)
-	// }
-	c.String(http.StatusOK, lst.String())
-	return nil
+		file := File{
+			Src:      preSign.Url,
+			Filename: *v.Owner.DisplayName,
+			Size:     *v.Size,
+		}
+		resp.Files = append(resp.Files, file)
+	}
+	c.JSON(http.StatusOK, resp)
+	return
 }
