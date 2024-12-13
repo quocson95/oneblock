@@ -57,8 +57,12 @@ func main() {
 		router.GET("/be/data/btc_holder", api.BtcHolder)
 
 		router.GET("/be/data/btc_eth_static", api.BtcEthStatic)
-		router.GET("/be/data/storage", api.StorageFile)
-		router.GET("/api/storage", api.StorageFile)
+		// router.GET("/be/data/storage", api.StorageFile)
+		// router.GET("/api/storage", api.StorageFile)
+		// router.GET("/api/storage", )
+		new(api.S3Storage).Handler(router.Group("/be/data/storage"))
+		new(api.S3Storage).Handler(router.Group("/api/storage"))
+		new(api.S3Storage).Handler(router.Group("/be/s3"))
 
 		router.GET("/be/data/eth_gas_history", api.EthGasHistory)
 		router.GET("/be/data/usd_vnd", api.USDVNDRate)
