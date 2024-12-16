@@ -1,4 +1,5 @@
 services:
+
   backend:
     container_name: oneblock_backend
     build:
@@ -8,6 +9,7 @@ services:
     restart: always  
     depends_on:
       - db
+      
     volumes:
       - appdata:/home/sondq/appdata
 
@@ -22,10 +24,10 @@ services:
       - /usr/share/nginx/html/static/uploads:/home/sondq/landing-cms-public
       - appdata:/home/sondq/appdata
 
-  landing-cms-editor:
-    container_name: oneblock_landing_cms_editor
+  landing-cms-publisher:
+    container_name: oneblock_landing_cms_publisher
     build:
-      context: ./oneblock-landing-editor
+      context: ./oneblock-landing-publisher
     ports:
       - "8200:80"    
     restart: always 

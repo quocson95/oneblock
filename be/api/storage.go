@@ -222,9 +222,11 @@ func listS3(c *gin.Context) {
 		preSign, _ := DefaultS3Hepler.PreSign(http.MethodGet, bucket, *v.Key)
 
 		file := File{
-			Src:      preSign.Url,
-			Filename: *v.Owner.DisplayName,
-			Size:     *v.Size,
+			Src:  preSign.Url,
+			Size: *v.Size,
+		}
+		if v.Owner != nil {
+			file.Filename = *v.Owner.DisplayName
 		}
 		resp.Files = append(resp.Files, file)
 	}

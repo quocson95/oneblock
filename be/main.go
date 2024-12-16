@@ -5,6 +5,7 @@ import (
 	"be/common"
 	"be/config"
 	"be/database"
+	"be/security"
 	"be/sp500"
 	"fmt"
 	"net/http"
@@ -15,6 +16,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"gorm.io/gorm"
 )
 
 func init() {
@@ -39,12 +41,19 @@ func main() {
 	port := 8080
 	err := database.InitDB(config.GetConfig().PostgressDsn)
 	database.DB.AutoMigrate(new(common.Mdx))
-
+	database.DB.AutoMigrate(new(common.User))
+	common.GetDB = func() *gorm.DB {
+		return database.DB
+	}
 	if err != nil {
 		panic(err)
 	}
-
+	// time.AfterFunc(2*time.Second, func() {
+	// 	job.StartJobSnapshotTradingViewHeatmap()
+	// })
 	startServeAPI(port, func(router *gin.Engine) {
+		router.Static("/be/static", "static")
+
 		router.Static("/be/chart", "chart")
 		router.GET("/be/data/btc_gold_raw", api.BtcGold)
 		router.GET("/be/data/m1", api.MoneySupplyM1)
@@ -67,6 +76,12 @@ func main() {
 		router.GET("/be/data/eth_gas_history", api.EthGasHistory)
 		router.GET("/be/data/usd_vnd", api.USDVNDRate)
 		new(api.MdxApi).Handler(router.Group("/be/mdx"))
+		new(api.TradingViewApi).Handler(router.Group("/be/tradingview"))
+		new(api.AccountApi).Handler(router.Group("/be/account"))
+		api.NewOath2Api(config.GetConfig().GoogleConsole).Handler(router.Group("/be/auth"))
+
+		new(api.MdxAdminApi).Handler(router.Group("/be/admin/mdx").Use(security.TokenAuthMiddleware(database.DB)))
+
 	}, func(err error) {
 		// e.Logger.Fatal(e.Start(fmt.Sprintf(":%d", port)))
 		zap.L().With(zap.Int("port", port)).With(zap.Error(err)).Error("startServeAPI failed")
@@ -79,7 +94,7 @@ func startServeAPI(port int, handler func(router *gin.Engine), onErr func(err er
 	router.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"*"},
 		AllowMethods:     []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodOptions, http.MethodDelete},
-		AllowHeaders:     []string{echo.HeaderContentType, echo.HeaderAccept, "user-agent", "referer"},
+		AllowHeaders:     []string{echo.HeaderContentType, echo.HeaderAccept, "user-agent", "referer", "Cookie", "Authorize"},
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
 		AllowOriginFunc: func(origin string) bool {
@@ -92,5 +107,26 @@ func startServeAPI(port int, handler func(router *gin.Engine), onErr func(err er
 	err := router.Run(fmt.Sprintf(":%d", port))
 	if err != nil && onErr != nil {
 		onErr(err)
+	}
+}
+
+func createDefaultUser() {
+	emails := []string{
+		"dangquocson1995@gmail.com",
+		"nghuuloc512@gmail.com",
+		"nguyentrungbmt17@gmail.com",
+		"haotran1689@gmail.com",
+		"dtoan.bui@gmail.com",
+	}
+	for _, email := range emails {
+		u := common.User{
+			UserName:     email,
+			Email:        email,
+			Role:         common.RoleUserAdmin,
+			UsdtInWallet: 0,
+		}
+		if err := u.Create(); err != nil {
+			zap.L().With(zap.Error(err)).With(zap.String("email", email)).Error("add user failed")
+		}
 	}
 }

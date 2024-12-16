@@ -2,10 +2,17 @@ package common
 
 import (
 	"bufio"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"strings"
+	"time"
+
+	"gorm.io/gorm"
 )
+
+var GetDB func() *gorm.DB
 
 type DataRawID string
 
@@ -44,4 +51,16 @@ func ReadLine(id DataRawID, fn func(line []string) error) error {
 		}
 	}
 	return scanner.Err()
+}
+
+func Sha265Random() string {
+	hash := sha256.New()
+	hash.Write([]byte(time.Now().String()))
+
+	// Get the hash result
+	hashBytes := hash.Sum(nil)
+
+	// Convert the hash bytes to a hexadecimal string
+	hashString := hex.EncodeToString(hashBytes)
+	return hashString
 }

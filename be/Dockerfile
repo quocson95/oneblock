@@ -20,7 +20,6 @@ RUN chmod +x oneblock_backend
 
 # Start a new stage from scratch
 FROM golang:1.23.4
-
 # Set the Current Working Directory inside the container
 WORKDIR /app
 
@@ -28,8 +27,10 @@ WORKDIR /app
 COPY --from=builder /app/oneblock_backend /app/oneblock_backend
 COPY chart /app/chart
 COPY raw_data /app/raw_data
+COPY static /app/static
 COPY config.json /app/config.json
-# Expose port 8080 to the outside world
 EXPOSE 8080
+
+# Expose port 8080 to the outside world
 # Command to run the executable
 CMD ["/app/oneblock_backend"]
