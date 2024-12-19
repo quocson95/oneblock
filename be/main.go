@@ -40,8 +40,8 @@ func main() {
 	// }))
 	port := 8080
 	err := database.InitDB(config.GetConfig().PostgressDsn)
-	database.DB.AutoMigrate(new(common.Mdx))
-	database.DB.AutoMigrate(new(common.User))
+	database.DB.AutoMigrate(new(common.Mdx), new(common.User), new(common.ICS))
+
 	common.GetDB = func() *gorm.DB {
 		return database.DB
 	}
@@ -79,7 +79,9 @@ func main() {
 		new(api.TradingViewApi).Handler(router.Group("/be/tradingview"))
 		new(api.AccountApi).Handler(router.Group("/be/account"))
 		api.NewOath2Api(config.GetConfig().GoogleConsole).Handler(router.Group("/be/auth"))
+		new(api.ICSAPi).Handler(router.Group("/be/ics"))
 
+		//auth
 		new(api.MdxAdminApi).Handler(router.Group("/be/admin/mdx").Use(security.TokenAuthMiddleware(database.DB)))
 
 	}, func(err error) {
