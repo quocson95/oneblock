@@ -2,6 +2,7 @@ package common
 
 import (
 	"errors"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -17,10 +18,11 @@ const (
 
 type User struct {
 	gorm.Model
-	UserName     string   `json:"user_name,omitempty"`
-	Email        string   `json:"email,omitempty"`
-	Role         RoleUser `json:"role,omitempty"`
-	UsdtInWallet int64    `json:"usdt_in_wallet,omitempty"` // usdt
+	UserName     string    `json:"user_name,omitempty"`
+	Email        string    `json:"email,omitempty"`
+	Role         RoleUser  `json:"role,omitempty"`
+	UsdtInWallet int64     `json:"usdt_in_wallet,omitempty"` // usdt
+	LastLogin    time.Time `json:"last_login,omitempty"`
 }
 
 func (u *User) Create() error {
@@ -29,7 +31,7 @@ func (u *User) Create() error {
 }
 
 func (u *User) Read() error {
-	if u.ID < 0 {
+	if u.ID <= 0 {
 		return errors.New("invalid id")
 	}
 	tx := GetDB().Model(u).First(u)
@@ -37,9 +39,20 @@ func (u *User) Read() error {
 }
 
 func (u *User) FindByEmail(email string) error {
-	if len(u.Email) < 0 {
+	if len(email) <= 0 {
 		return errors.New("invalid email")
 	}
-	tx := GetDB().Model(u).Where("email= ? ", email).First(u)
+	tx := GetDB().Model(u).Where("email=?", email).First(u)
+	return tx.Error
+}
+
+func (u *User) Update(changes map[string]interface{}) error {
+	delete(changes, "id")
+	delete(changes, "Id")
+	delete(changes, "ID")
+	if len(changes) == 0 {
+		return nil
+	}
+	tx := GetDB().Model(u).Where("id=?", u.ID).Updates(changes)
 	return tx.Error
 }

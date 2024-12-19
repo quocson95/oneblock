@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -96,6 +97,7 @@ func (o *Oauth2Api) GooleOauth2Callback(c *gin.Context) {
 		c.Redirect(http.StatusFound, redirectUrl)
 		return
 	}
+	user.Update(map[string]interface{}{"last_login": time.Now()})
 	tokenResp, err := security.CreateToken(user)
 	if err != nil {
 		zap.L().With(zap.String("email", user.Email)).With(zap.Error(err)).Error("create token failed")
