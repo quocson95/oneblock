@@ -24,6 +24,11 @@ func (i *ICS) GetById(id uint) error {
 	return tx.Error
 }
 
+func InsertMultiICS(ml []ICS) error {
+	tx := GetDB().CreateInBatches(ml, len(ml))
+	return tx.Error
+}
+
 func (i *ICS) Insert() error {
 	i.CreatedAt = time.Now()
 	i.UpdatedAt = i.CreatedAt

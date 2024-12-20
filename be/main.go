@@ -42,7 +42,7 @@ func main() {
 	// }))
 	port := 8080
 	err := database.InitDB(config.GetConfig().PostgressDsn)
-	database.DB.AutoMigrate(new(common.Mdx), new(common.User), new(common.ICS))
+	database.DB.AutoMigrate(new(common.Mdx), new(common.User), new(common.ICS), new(common.VnInvestingCrawlLog))
 
 	common.GetDB = func() *gorm.DB {
 		return database.DB
@@ -101,19 +101,25 @@ func main() {
 
 }
 
+var trustOrigin = map[string]struct{}{"https://oneblock.vn": {}, "https://dev.oneblock.vn": {}, "https://blog.oneblock.vn": {}}
+
 func startServeAPI(port int, handler func(router *gin.Engine), onErr func(err error), onDone func()) {
 	router := gin.Default()
 	router.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"*"},
+		// AllowOrigins:     []string{"https://*on"},
 		AllowMethods:     []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodOptions, http.MethodDelete},
 		AllowHeaders:     []string{echo.HeaderContentType, echo.HeaderAccept, "user-agent", "referer", "Cookie", "Authorize"},
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
 		AllowOriginFunc: func(origin string) bool {
-			return true
+			_, exist := trustOrigin[origin]
+			return exist
 		},
 		MaxAge: 24 * time.Hour,
 	}))
+	if gin.Mode() == gin.ReleaseMode {
+		router.SetTrustedProxies(nil)
+	}
 	handler(router)
 	zap.L().With(zap.Int("port", port)).Info("start server")
 	err := router.Run(fmt.Sprintf(":%d", port))

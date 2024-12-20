@@ -13,16 +13,6 @@ import (
 	"go.uber.org/zap"
 )
 
-type EconomicEvent struct {
-	DateTime string `json:"datetime"`
-	TimeUnix int64  `json:"timeUnix"`
-	Currency string `json:"currency"`
-	Event    string `json:"event"`
-	Actual   string `json:"actual"`
-	Forecast string `json:"forecast"`
-	Previous string `json:"previous"`
-}
-
 type VnInvestingCrawl struct{}
 
 func (v *VnInvestingCrawl) Handler(g gin.IRoutes) {
@@ -40,7 +30,7 @@ func (v *VnInvestingCrawl) GetCraw(c *gin.Context) {
 	c.JSON(http.StatusOK, events)
 }
 
-func Crawl() ([]EconomicEvent, error) {
+func Crawl() ([]common.EconomicEvent, error) {
 	url := "https://vn.investing.com/economic-calendar/"
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -74,13 +64,13 @@ func Crawl() ([]EconomicEvent, error) {
 		return nil, err
 	}
 
-	var events []EconomicEvent
+	var events []common.EconomicEvent
 
 	// Find the tbody element with the 'pageStartAt' attribute
 	doc.Find("tbody[pageStartAt]").Find("tr").Each(func(i int, row *goquery.Selection) {
 		cells := row.Find("td")
 		if cells.Length() >= 6 {
-			event := EconomicEvent{
+			event := common.EconomicEvent{
 				// Time:     strings.TrimSpace(cells.Eq(0).Text()),
 				Currency: strings.TrimSpace(cells.Eq(1).Text()),
 				Actual:   strings.TrimSpace(cells.Eq(3).Text()),
@@ -117,13 +107,23 @@ func JobCrawAndImportEventInvestingCalendar(ctx context.Context) {
 			ics := common.ICS{
 				Uid:       common.QuickMd5([]byte(fmt.Sprintf("%s_%d", event.Actual, event.TimeUnix))),
 				Name:      event.Actual,
-				Desp:      fmt.Sprintf("%s forecast(%s) previous(%s)", event.Actual, event.Forecast, event.Previous),
+				Desp:      fmt.Sprintf("%s Dự báo(%s) Trước đó(%s)", event.Actual, event.Forecast, event.Previous),
 				StartUnix: event.TimeUnix,
 				EndUnix:   event.TimeUnix + 30*60,
 			}
-			ics.Insert()
-			lastRunSucces = time.Now()
+			err = ics.Insert()
+			if err != nil && !strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
+				zap.L().With(zap.Error(err)).Error("insert new ics failed")
+				return
+			}
 		}
+		logEvent := common.VnInvestingCrawlLog{
+			DataObjs: events,
+		}
+		if err := logEvent.Insert(); err != nil {
+			zap.L().With(zap.Error(err)).Error("insert log craw failed")
+		}
+		lastRunSucces = time.Now()
 	}
 	fnCrawAndImport()
 	ticker := time.NewTicker(1 * time.Minute)

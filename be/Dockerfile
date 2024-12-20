@@ -30,7 +30,6 @@ COPY raw_data /app/raw_data
 COPY static /app/static
 COPY config.json /app/config.json
 EXPOSE 8080
-
 # Expose port 8080 to the outside world
 # Command to run the executable
 CMD ["/app/oneblock_backend"]
