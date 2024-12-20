@@ -46,7 +46,7 @@ func generateICS(ml []common.ICS) string {
 		}
 		endTime := time.Unix(event.StartUnix, 0)
 		builder.WriteString("BEGIN:VEVENT\n")
-		builder.WriteString(fmt.Sprintf("UID:%s@oneblock.vn\n", startTime.Format("20060102150405")))
+		builder.WriteString(fmt.Sprintf("UID:%s@oneblock.vn\n", event.Uid))
 		builder.WriteString(fmt.Sprintf("DTSTAMP:%s\n", startTime.Format("20060102T150405Z")))
 		builder.WriteString((fmt.Sprintf("DTSTART:%s\n", startTime.Format("20060102T150000Z"))))
 		builder.WriteString(fmt.Sprintf("DTEND:%s\n", endTime.Format("20060102T150000Z")))

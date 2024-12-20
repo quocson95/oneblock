@@ -1,6 +1,7 @@
 package common
 
 import (
+	"errors"
 	"time"
 
 	"gorm.io/gorm"
@@ -8,10 +9,19 @@ import (
 
 type ICS struct {
 	gorm.Model
+	Uid       string `gorm:"index:uidx_name,unique" json:"uid"`
 	Name      string `json:"name,omitempty"`
 	Desp      string `json:"desp,omitempty"`
 	StartUnix int64  `json:"start_unix,omitempty"`
 	EndUnix   int64  `json:"end_unix,omitempty"`
+}
+
+func (i *ICS) GetById(id uint) error {
+	if id == 0 {
+		return errors.New("id not allow less than zero")
+	}
+	tx := GetDB().Model(i).Where("id=?", id).First(i)
+	return tx.Error
 }
 
 func (i *ICS) Insert() error {
@@ -26,6 +36,18 @@ func GetICS(offset int, limit int) ([]ICS, error) {
 	if limit < 0 {
 		return ml, nil
 	}
-	tx := GetDB().Model(new(ICS)).Where("deleted_at is null").Offset(offset).Limit(limit).Order("start_unix DESC").Find(&ml)
+	minStartUnix := time.Now().Add(-14 * 24 * time.Hour).Unix()
+	tx := GetDB().Model(new(ICS)).Where("deleted_at is null and start_unix >=?", minStartUnix).Offset(offset).Limit(limit).Order("start_unix DESC").Find(&ml)
 	return ml, tx.Error
+}
+
+func (i *ICS) Updates(changes map[string]interface{}) error {
+	if len(changes) == 0 {
+		return nil
+	}
+	if i.ID == 0 {
+		return errors.New("id not allow less than zero")
+	}
+	changes["updated_at"] = time.Now()
+	return GetDB().Model(i).Where("id=? and deleted_at is null", i.ID).Updates(changes).Error
 }

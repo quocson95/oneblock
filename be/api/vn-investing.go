@@ -1,0 +1,163 @@
+package api
+
+import (
+	"be/common"
+	"context"
+	"fmt"
+	"net/http"
+	"strings"
+	"time"
+
+	"github.com/PuerkitoBio/goquery"
+	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
+)
+
+type EconomicEvent struct {
+	DateTime string `json:"datetime"`
+	TimeUnix int64  `json:"timeUnix"`
+	Currency string `json:"currency"`
+	Event    string `json:"event"`
+	Actual   string `json:"actual"`
+	Forecast string `json:"forecast"`
+	Previous string `json:"previous"`
+}
+
+type VnInvestingCrawl struct{}
+
+func (v *VnInvestingCrawl) Handler(g gin.IRoutes) {
+	g.GET("", v.GetCraw)
+	g.GET("/", v.GetCraw)
+}
+
+func (v *VnInvestingCrawl) GetCraw(c *gin.Context) {
+	events, err := Crawl()
+	if err != nil {
+		zap.L().With(zap.Error(err)).Error("craw failed")
+		c.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+	c.JSON(http.StatusOK, events)
+}
+
+func Crawl() ([]EconomicEvent, error) {
+	url := "https://vn.investing.com/economic-calendar/"
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		// log.Fatalf("Failed to create request: %v", err)
+		return nil, err
+	}
+
+	req.Header.Add("User-Agent", "Mozilla/5.0 (X11; Linux x86_64; rv:133.0) Gecko/20100101 Firefox/133.0")
+	req.Header.Add("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+	req.Header.Add("Accept-Language", "en-US,en;q=0.5")
+	req.Header.Add("DNT", "1")
+	req.Header.Add("Sec-GPC", "1")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		// log.Fatalf("Failed to fetch URL: %v", err)
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		// log.Fatalf("Failed with status code: %d", resp.StatusCode)
+		return nil, fmt.Errorf("get %s with status %d", url, resp.StatusCode)
+	}
+
+	// Parse the HTML
+	doc, err := goquery.NewDocumentFromReader(resp.Body)
+	if err != nil {
+		// log.Fatalf("Failed to parse HTML: %v", err)
+		return nil, err
+	}
+
+	var events []EconomicEvent
+
+	// Find the tbody element with the 'pageStartAt' attribute
+	doc.Find("tbody[pageStartAt]").Find("tr").Each(func(i int, row *goquery.Selection) {
+		cells := row.Find("td")
+		if cells.Length() >= 6 {
+			event := EconomicEvent{
+				// Time:     strings.TrimSpace(cells.Eq(0).Text()),
+				Currency: strings.TrimSpace(cells.Eq(1).Text()),
+				Actual:   strings.TrimSpace(cells.Eq(3).Text()),
+				Forecast: strings.TrimSpace(cells.Eq(4).Text()),
+				Previous: strings.TrimSpace(cells.Eq(5).Text()),
+			}
+			event.Event, _ = cells.Eq(2).Attr("data-img_key")
+			if event.Currency != "USD" {
+				return
+			}
+			event.Event = strings.TrimSpace(event.Event)
+			if event.Event != "bull3" {
+				return
+			}
+			dateTime, _ := row.Attr("data-event-datetime")
+			event.DateTime = strings.TrimSpace(dateTime)
+			event.TimeUnix = dateTimeStringToTime(event.DateTime).Unix()
+			events = append(events, event)
+		}
+	})
+
+	return events, nil
+}
+
+func JobCrawAndImportEventInvestingCalendar(ctx context.Context) {
+	lastRunSucces := time.Time{}
+	fnCrawAndImport := func() {
+		events, err := Crawl()
+		if err != nil {
+			zap.L().With(zap.Error(err)).Error("craw failed")
+			return
+		}
+		for _, event := range events {
+			ics := common.ICS{
+				Uid:       common.QuickMd5([]byte(fmt.Sprintf("%s_%d", event.Actual, event.TimeUnix))),
+				Name:      event.Actual,
+				Desp:      fmt.Sprintf("%s forecast(%s) previous(%s)", event.Actual, event.Forecast, event.Previous),
+				StartUnix: event.TimeUnix,
+				EndUnix:   event.TimeUnix + 30*60,
+			}
+			ics.Insert()
+			lastRunSucces = time.Now()
+		}
+	}
+	fnCrawAndImport()
+	ticker := time.NewTicker(1 * time.Minute)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			now := time.Now()
+			if now.Day() != lastRunSucces.Day() {
+				fnCrawAndImport()
+			}
+			if now.Add(-6 * time.Hour).Before(lastRunSucces) {
+				return
+			}
+			fnCrawAndImport()
+		}
+	}
+}
+
+func dateTimeStringToTime(dateStr string) *time.Time {
+	layout := "2006/01/02 15:04:05"
+	location, err := time.LoadLocation("UTC") // GMT+7 corresponds to Asia/Bangkok
+	if err != nil {
+		fmt.Printf("Error loading location: %v\n", err)
+		return &time.Time{}
+	}
+
+	// Parse the string into time.Time in the specified location
+	parsedTime, err := time.ParseInLocation(layout, dateStr, location)
+	if err != nil {
+		fmt.Printf("Error parsing time: %v\n", err)
+		return &time.Time{}
+	}
+	return &parsedTime
+
+}

@@ -17,6 +17,7 @@ type Mdx struct {
 	MD5       string       `gorm:"column:md5" json:"md5,omitempty"`
 	Err       error        `gorm:"-" json:"err,omitempty"`
 	Content   string       `gorm:"-" json:"content,omitempty"`
+	Publish   bool         `json:"publish,omitempty"`
 }
 
 func (m *Mdx) Insert(db *gorm.DB) error {
@@ -25,6 +26,13 @@ func (m *Mdx) Insert(db *gorm.DB) error {
 	m.UpdatedAt = m.CreatedAt
 	tx := db.Create(m)
 	return tx.Error
+}
+
+func GetListMdx(limit, offset int) ([]Mdx, error) {
+	ml := make([]Mdx, 0)
+	tx := GetDB().Model(new(Mdx)).Where("deleted_at is null")
+	tx = tx.Limit(limit).Offset(offset).Order("id DESC").Find(&ml)
+	return ml, tx.Error
 }
 
 func (m *Mdx) Update(db *gorm.DB, id uint, changes map[string]interface{}) error {

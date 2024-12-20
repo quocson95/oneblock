@@ -2,6 +2,7 @@ package common
 
 import (
 	"bufio"
+	"crypto/md5"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -11,6 +12,8 @@ import (
 
 	"gorm.io/gorm"
 )
+
+const DefaultBucketMdx = "mdx"
 
 var GetDB func() *gorm.DB
 
@@ -62,5 +65,17 @@ func Sha265Random() string {
 
 	// Convert the hash bytes to a hexadecimal string
 	hashString := hex.EncodeToString(hashBytes)
+	return hashString
+}
+
+func QuickMd5(data []byte) string {
+	// Create a new MD5 hash
+	hash := md5.New()
+	// Write data to the hash
+	hash.Write(data)
+	// Get the resulting hash as a byte slice
+	hashInBytes := hash.Sum(nil)
+	// Convert the byte slice to a hexadecimal string
+	hashString := hex.EncodeToString(hashInBytes)
 	return hashString
 }

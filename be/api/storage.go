@@ -182,7 +182,7 @@ func (h *S3Storage) UploadStorageFile(c *gin.Context) {
 		client.Header.Set("Content-Type", http.DetectContentType(body))
 	}
 	client.ContentLength = int64(len(body))
-	resp, err := defaultHttpClient.Do(client)
+	resp, err := common.DefaultHttpClient.Do(client)
 	if err != nil {
 		zap.L().With(zap.String("name", name)).With(zap.String("bucket", bucket)).With(zap.Error(err)).Error("upload failed")
 		c.JSON(http.StatusBadRequest, &S3StorageResp{Err: errors.New("upload failed")})

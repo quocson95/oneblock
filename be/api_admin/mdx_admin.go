@@ -1,6 +1,7 @@
-package api
+package apiadmin
 
 import (
+	"be/api"
 	"be/common"
 	"be/database"
 	"bytes"
@@ -16,16 +17,16 @@ import (
 	"go.uber.org/zap"
 )
 
-type MdxAdminApi struct {
-	MdxApi
+type MdxAdminController struct {
+	api.MdxController
 }
 
-func (m *MdxAdminApi) Handler(g gin.IRoutes) {
-	m.MdxApi.Handler(g)
+func (m *MdxAdminController) Handler(g gin.IRoutes) {
+	m.MdxController.Handler(g)
 	g.PUT("/", m.UploadMdx)
 }
 
-func (m *MdxAdminApi) List(c *gin.Context) {
+func (m *MdxAdminController) List(c *gin.Context) {
 	limit := 100
 	offset := 0
 	ml := make([]common.Mdx, 0)
@@ -39,11 +40,11 @@ func (m *MdxAdminApi) List(c *gin.Context) {
 	c.JSON(http.StatusOK, ml)
 }
 
-func (m *MdxAdminApi) Get(c *gin.Context) {
+func (m *MdxAdminController) Get(c *gin.Context) {
 	id := c.Param("id")
 	v := common.Mdx{}
 	database.DB.Model(new(common.Mdx)).Where("id=?", id).First(&v)
-	preSign, err := DefaultS3Hepler.PreSign(http.MethodGet, defaultBucketMdx, v.Name)
+	preSign, err := api.DefaultS3Hepler.PreSign(http.MethodGet, common.DefaultBucketMdx, v.Name)
 	if err != nil {
 		zap.L().With(zap.String("id", id)).With(zap.String("name", v.Name)).With(zap.Error(err)).Error("presign failed")
 		c.Abort()
@@ -51,7 +52,7 @@ func (m *MdxAdminApi) Get(c *gin.Context) {
 	}
 	v.Url = preSign.Url
 	if len(c.Query("loadContent")) > 0 {
-		resp, cleanup, err := quickGetHttp(preSign.Method, preSign.Url, nil)
+		resp, cleanup, err := common.QuickGetHttp(preSign.Method, preSign.Url, nil)
 		defer cleanup()
 		if err == nil {
 			content, _ := io.ReadAll(resp.Body)
@@ -63,7 +64,7 @@ func (m *MdxAdminApi) Get(c *gin.Context) {
 
 }
 
-func (m *MdxAdminApi) UploadMdx(c *gin.Context) {
+func (m *MdxAdminController) UploadMdx(c *gin.Context) {
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
 		c.JSON(http.StatusOK, common.Mdx{Err: errors.New("read body failed")})
@@ -72,7 +73,7 @@ func (m *MdxAdminApi) UploadMdx(c *gin.Context) {
 	// buf := &bytes.Buffer{}
 	// zw := gzip.NewWriter(buf)
 	name := c.Query("name")
-	preSign, err := DefaultS3Hepler.PreSign(http.MethodPut, defaultBucketMdx, name)
+	preSign, err := api.DefaultS3Hepler.PreSign(http.MethodPut, common.DefaultBucketMdx, name)
 	if err != nil {
 		zap.L().With(zap.Error(err)).Error("presign failed")
 		// c.AbortWithError(http.StatusBadRequest, errors.New("presign failed"))
@@ -98,7 +99,7 @@ func (m *MdxAdminApi) UploadMdx(c *gin.Context) {
 	// }()
 	client.Header.Set("Content-Type", c.ContentType())
 	client.ContentLength = int64(len(body))
-	resp, err := defaultHttpClient.Do(client)
+	resp, err := common.DefaultHttpClient.Do(client)
 	if err != nil {
 		zap.L().With(zap.Error(err)).Error("put failed")
 		// c.AbortWithError(http.StatusBadRequest, errors.New("put failed"))
@@ -116,7 +117,7 @@ func (m *MdxAdminApi) UploadMdx(c *gin.Context) {
 	mdx := &common.Mdx{}
 	mdx.GetByName(database.DB, name)
 	mdx.Name = name
-	mdx.MD5 = quickMd5(body)
+	mdx.MD5 = common.QuickMd5(body)
 	mdx.UpdatedAt = time.Now()
 	if mdx.ID == 0 {
 		mdx.Insert(database.DB)
@@ -124,7 +125,7 @@ func (m *MdxAdminApi) UploadMdx(c *gin.Context) {
 		mdx.Update(database.DB, (mdx.ID), map[string]interface{}{"md5": mdx.MD5, "updated_at": mdx.UpdatedAt})
 	}
 	mdx.GetByName(database.DB, name)
-	getPresign, _ := DefaultS3Hepler.PreSign(http.MethodGet, defaultBucketMdx, name)
+	getPresign, _ := api.DefaultS3Hepler.PreSign(http.MethodGet, common.DefaultBucketMdx, name)
 	mdx.Url = getPresign.Url
 	c.JSON(http.StatusOK, mdx)
 }

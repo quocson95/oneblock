@@ -26,7 +26,7 @@ func TokenAuthMiddleware(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 		if cacheUser, ok := cache.CacheData.Load(cache.CacheDataTypeUser); ok {
-			if v, _ := cacheUser.(*common.User); v != nil {
+			if v, ok := cacheUser.(*common.User); ok && v != nil {
 				c.Set("user", v)
 				c.Next()
 			}

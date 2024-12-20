@@ -73,7 +73,7 @@ func VerifyToken(token string) (*common.User, error) {
 	}
 	return &common.User{
 		Model: gorm.Model{
-			ID: uint(user["id"].(float64)),
+			ID: uint(user["Id"].(float64)),
 		},
 	}, nil
 }

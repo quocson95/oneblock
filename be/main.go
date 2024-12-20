@@ -2,11 +2,13 @@ package main
 
 import (
 	"be/api"
+	apiadmin "be/api_admin"
 	"be/common"
 	"be/config"
 	"be/database"
 	"be/security"
 	"be/sp500"
+	"context"
 	"fmt"
 	"net/http"
 	"time"
@@ -51,6 +53,8 @@ func main() {
 	// time.AfterFunc(2*time.Second, func() {
 	// 	job.StartJobSnapshotTradingViewHeatmap()
 	// })
+	ctx, cancel := context.WithCancel(context.Background())
+	go api.JobCrawAndImportEventInvestingCalendar(ctx)
 	startServeAPI(port, func(router *gin.Engine) {
 		router.Static("/be/static", "static")
 
@@ -75,23 +79,29 @@ func main() {
 
 		router.GET("/be/data/eth_gas_history", api.EthGasHistory)
 		router.GET("/be/data/usd_vnd", api.USDVNDRate)
-		new(api.MdxApi).Handler(router.Group("/be/mdx"))
+		new(api.MdxController).Handler(router.Group("/be/mdx"))
 		new(api.TradingViewApi).Handler(router.Group("/be/tradingview"))
 		new(api.AccountApi).Handler(router.Group("/be/account"))
 		api.NewOath2Api(config.GetConfig().GoogleConsole).Handler(router.Group("/be/auth"))
 		new(api.ICSAPi).Handler(router.Group("/be/ics"))
+		new(api.VnInvestingCrawl).Handler(router.Group("/be/vn-investing"))
 
 		//auth
-		new(api.MdxAdminApi).Handler(router.Group("/be/admin/mdx").Use(security.TokenAuthMiddleware(database.DB)))
+		new(apiadmin.MdxAdminController).Handler(router.Group("/be/admin/mdx").Use(security.TokenAuthMiddleware(database.DB)))
+		new(apiadmin.ICSAdminController).Handler(router.Group("/be/admin/ics").Use(security.TokenAuthMiddleware(database.DB)))
 
 	}, func(err error) {
 		// e.Logger.Fatal(e.Start(fmt.Sprintf(":%d", port)))
 		zap.L().With(zap.Int("port", port)).With(zap.Error(err)).Error("startServeAPI failed")
-	})
+		cancel()
+	},
+		func() {
+			cancel()
+		})
 
 }
 
-func startServeAPI(port int, handler func(router *gin.Engine), onErr func(err error)) {
+func startServeAPI(port int, handler func(router *gin.Engine), onErr func(err error), onDone func()) {
 	router := gin.Default()
 	router.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"*"},
@@ -109,7 +119,9 @@ func startServeAPI(port int, handler func(router *gin.Engine), onErr func(err er
 	err := router.Run(fmt.Sprintf(":%d", port))
 	if err != nil && onErr != nil {
 		onErr(err)
+		return
 	}
+	onDone()
 }
 
 func createDefaultUser() {
