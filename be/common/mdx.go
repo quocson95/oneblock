@@ -2,9 +2,18 @@ package common
 
 import (
 	"database/sql"
+	"fmt"
 	"time"
 
 	"gorm.io/gorm"
+)
+
+type TypeDoc int
+
+const (
+	TypeDocDraf                  = 0
+	TypeDocPublish       TypeDoc = 1
+	TypeDocAboutUsMember TypeDoc = 2
 )
 
 type Mdx struct {
@@ -17,7 +26,8 @@ type Mdx struct {
 	MD5       string       `gorm:"column:md5" json:"md5,omitempty"`
 	Err       error        `gorm:"-" json:"err,omitempty"`
 	Content   string       `gorm:"-" json:"content,omitempty"`
-	Publish   bool         `json:"publish,omitempty"`
+	// Publish   bool         `json:"publish,omitempty"`
+	TypeDoc TypeDoc `json:"type_doc,omitempty"`
 }
 
 func (m *Mdx) Insert(db *gorm.DB) error {
@@ -28,9 +38,13 @@ func (m *Mdx) Insert(db *gorm.DB) error {
 	return tx.Error
 }
 
-func GetListMdx(limit, offset int) ([]Mdx, error) {
+func GetListMdx(typeDoc int, offset, limit int) ([]Mdx, error) {
 	ml := make([]Mdx, 0)
-	tx := GetDB().Model(new(Mdx)).Where("deleted_at is null")
+	whereQuery := `deleted_at is null`
+	if typeDoc >= 0 {
+		whereQuery += fmt.Sprintf(" AND type_doc=%d", typeDoc)
+	}
+	tx := GetDB().Model(new(Mdx)).Where(whereQuery)
 	tx = tx.Limit(limit).Offset(offset).Order("id DESC").Find(&ml)
 	return ml, tx.Error
 }

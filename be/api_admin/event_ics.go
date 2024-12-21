@@ -4,6 +4,7 @@ import (
 	"be/common"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -14,13 +15,15 @@ type ICSAdminController struct{}
 func (i *ICSAdminController) Handler(g gin.IRoutes) {
 	g.GET("", i.List)
 	g.GET("/", i.List)
+	g.GET("/log", i.ListLogCraw)
 	g.GET("/:id", i.Get)
 	g.POST("/", i.Add)
 	g.PUT("/", i.Edit)
 }
 
 func (i *ICSAdminController) List(c *gin.Context) {
-	ml, err := common.GetICS(0, 1000)
+	start, end := common.GetWeekRange(time.Now())
+	ml, err := common.GetICS(start, end, 0, 1000)
 	if err != nil {
 		zap.L().With(zap.Error(err)).Error("get list ics failed")
 		c.AbortWithStatus(http.StatusBadRequest)
@@ -44,6 +47,16 @@ func (i *ICSAdminController) Get(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, ics)
+}
+
+func (i *ICSAdminController) ListLogCraw(c *gin.Context) {
+	ml, err := common.GetVnInvestingCrawlLogs(0, 1000)
+	if err != nil {
+		zap.L().With(zap.Error(err)).Error("get log craw failed")
+		c.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+	c.JSON(http.StatusOK, ml)
 }
 
 func (i *ICSAdminController) Add(c *gin.Context) {

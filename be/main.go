@@ -98,10 +98,9 @@ func main() {
 		func() {
 			cancel()
 		})
-
 }
 
-var trustOrigin = map[string]struct{}{"https://oneblock.vn": {}, "https://dev.oneblock.vn": {}, "https://blog.oneblock.vn": {}}
+var trustOrigin = map[string]struct{}{"https://oneblock.vn": {}, "https://editor.oneblock.vn": {}, "https://dev.oneblock.vn": {}, "https://blog.oneblock.vn": {}, "http://103.82.133.178:3000": {}}
 
 func startServeAPI(port int, handler func(router *gin.Engine), onErr func(err error), onDone func()) {
 	router := gin.Default()
@@ -112,8 +111,12 @@ func startServeAPI(port int, handler func(router *gin.Engine), onErr func(err er
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
 		AllowOriginFunc: func(origin string) bool {
-			_, exist := trustOrigin[origin]
-			return exist
+			if _, exist := trustOrigin[origin]; exist {
+				return true
+			}
+			// return exist
+			zap.L().With(zap.String("origin", origin)).Error("reject origin")
+			return false
 		},
 		MaxAge: 24 * time.Hour,
 	}))

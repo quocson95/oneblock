@@ -79,3 +79,22 @@ func QuickMd5(data []byte) string {
 	hashString := hex.EncodeToString(hashInBytes)
 	return hashString
 }
+
+func GetWeekRange(t time.Time) (time.Time, time.Time) {
+	// Get the weekday (0=Sunday, 1=Monday, ..., 6=Saturday)
+	weekday := int(t.Weekday())
+
+	// Adjust for start of the week (Monday)
+	// If you want Sunday as the first day of the week, adjust as needed
+	if weekday == 0 {
+		weekday = 7
+	}
+
+	// Start of the week (Monday)
+	startOfWeek := t.AddDate(0, 0, -weekday+1).Truncate(24 * time.Hour)
+
+	// End of the week (Sunday)
+	endOfWeek := startOfWeek.AddDate(0, 0, 6).Add(23*time.Hour + 59*time.Minute + 59*time.Second)
+
+	return startOfWeek, endOfWeek
+}

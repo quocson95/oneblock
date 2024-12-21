@@ -130,11 +130,13 @@ func JobCrawAndImportEventInvestingCalendar(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
+			zap.L().Info("exist job craw investing calendar")
 			return
 		case <-ticker.C:
 			now := time.Now()
 			if now.Day() != lastRunSucces.Day() {
 				fnCrawAndImport()
+				return
 			}
 			if now.Add(-6 * time.Hour).Before(lastRunSucces) {
 				return

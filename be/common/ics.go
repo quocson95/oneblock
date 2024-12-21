@@ -36,13 +36,12 @@ func (i *ICS) Insert() error {
 	return tx.Error
 }
 
-func GetICS(offset int, limit int) ([]ICS, error) {
+func GetICS(start, end time.Time, offset int, limit int) ([]ICS, error) {
 	ml := make([]ICS, 0)
 	if limit < 0 {
 		return ml, nil
 	}
-	minStartUnix := time.Now().Add(-14 * 24 * time.Hour).Unix()
-	tx := GetDB().Model(new(ICS)).Where("deleted_at is null and start_unix >=?", minStartUnix).Offset(offset).Limit(limit).Order("start_unix DESC").Find(&ml)
+	tx := GetDB().Model(new(ICS)).Where("deleted_at is null AND start_unix >= ? AND end_unix <= ?", start.Unix(), end.Unix()).Offset(offset).Limit(limit).Order("start_unix DESC").Find(&ml)
 	return ml, tx.Error
 }
 

@@ -20,7 +20,7 @@ type EconomicEvent struct {
 type VnInvestingCrawlLog struct {
 	gorm.Model
 	Data     string          `json:"-"`
-	DataObjs []EconomicEvent `gorm:"-" json:"data"`
+	DataObjs []EconomicEvent `gorm:"-" json:"Data"`
 }
 
 func (v *VnInvestingCrawlLog) Insert() error {
@@ -37,6 +37,11 @@ func (v *VnInvestingCrawlLog) Insert() error {
 
 func GetVnInvestingCrawlLogs(offset, limit int) ([]VnInvestingCrawlLog, error) {
 	ml := make([]VnInvestingCrawlLog, 0, limit)
-	tx := GetDB().Model(new(VnInvestingCrawlLog)).Where("deleted_at not null").Offset(offset).Limit(limit).Find(&ml)
+	tx := GetDB().Model(new(VnInvestingCrawlLog)).Offset(offset).Limit(limit).Order("created_at DESC").Find(&ml)
+	for idx, v := range ml {
+		v.DataObjs = make([]EconomicEvent, 0)
+		json.Unmarshal([]byte(v.Data), &v.DataObjs)
+		ml[idx] = v
+	}
 	return ml, tx.Error
 }

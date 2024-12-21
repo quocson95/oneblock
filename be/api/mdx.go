@@ -28,7 +28,9 @@ func (m *MdxController) List(c *gin.Context) {
 	if v, _ := strconv.Atoi(c.Query("offset")); v > 0 {
 		offset = v
 	}
-	ml, _ := common.GetListMdx(limit, offset)
+	typeDocStr := c.DefaultQuery("type_doc", "1")
+	typeDoc, _ := strconv.Atoi(typeDocStr)
+	ml, _ := common.GetListMdx(typeDoc, offset, limit)
 	c.JSON(http.StatusOK, ml)
 }
 

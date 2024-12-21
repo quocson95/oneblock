@@ -1,5 +1,4 @@
 services:
-
   backend:
     container_name: oneblock_backend
     build:
@@ -11,19 +10,20 @@ services:
       - db
     environment:
       - GIN_MODE=release
+      # - GIN_MODE=dev
     volumes:
       - appdata:/home/sondq/appdata
 
-  landing-cms:
-    container_name: oneblock_landing_cms
-    build:
-      context: ./oneblock-landing
-    ports:
-      - "8100:80"
-    restart: always  
-    volumes:
-      - /usr/share/nginx/html/static/uploads:/home/sondq/landing-cms-public
-      - appdata:/home/sondq/appdata
+  # landing-cms:
+  #   container_name: oneblock_landing_cms
+  #   build:
+  #     context: ./oneblock-landing
+  #   ports:
+  #     - "8100:80"
+  #   restart: always  
+  #   volumes:
+  #     - /usr/share/nginx/html/static/uploads:/home/sondq/landing-cms-public
+  #     - appdata:/home/sondq/appdata
 
   landing-cms-publisher:
     container_name: oneblock_landing_cms_publisher
