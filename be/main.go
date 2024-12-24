@@ -42,7 +42,7 @@ func main() {
 	// }))
 	port := 8080
 	err := database.InitDB(config.GetConfig().PostgressDsn)
-	database.DB.AutoMigrate(new(common.Mdx), new(common.User), new(common.ICS), new(common.VnInvestingCrawlLog))
+	database.DB.AutoMigrate(new(common.Mdx), new(common.User), new(common.ICS), new(common.VnInvestingCrawlLog), new(common.S3ObjectSync))
 
 	common.GetDB = func() *gorm.DB {
 		return database.DB
@@ -50,9 +50,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	// time.AfterFunc(2*time.Second, func() {
-	// 	job.StartJobSnapshotTradingViewHeatmap()
-	// })
+
 	ctx, cancel := context.WithCancel(context.Background())
 	go api.JobCrawAndImportEventInvestingCalendar(ctx)
 	startServeAPI(port, func(router *gin.Engine) {
@@ -100,9 +98,12 @@ func main() {
 		})
 }
 
-var trustOrigin = map[string]struct{}{"https://oneblock.vn": {}, "https://editor.oneblock.vn": {}, "https://dev.oneblock.vn": {}, "https://blog.oneblock.vn": {}, "http://103.82.133.178:3000": {}}
-
 func startServeAPI(port int, handler func(router *gin.Engine), onErr func(err error), onDone func()) {
+	trustOrigin := make(map[string]struct{})
+	for _, s := range config.GetConfig().TrustOrigin {
+		trustOrigin[s] = struct{}{}
+	}
+	zap.L().With(zap.Strings("origins", config.GetConfig().TrustOrigin)).Info("trust origin")
 	router := gin.Default()
 	router.Use(cors.New(cors.Config{
 		// AllowOrigins:     []string{"https://*on"},

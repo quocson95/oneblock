@@ -21,6 +21,7 @@ type config struct {
 	S3SecretKey   string        `json:"s3_secret_key,omitempty"`
 	PostgressDsn  string        `json:"postgress_dsn,omitempty"`
 	GoogleConsole GoogleConsole `json:"google_console,omitempty"`
+	TrustOrigin   []string      `json:"trust_origin,omitempty"`
 }
 
 var defaultConfig = &config{}

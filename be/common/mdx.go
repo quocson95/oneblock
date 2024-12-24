@@ -17,15 +17,16 @@ const (
 )
 
 type Mdx struct {
-	ID        uint         `gorm:"primarykey" json:"id,omitempty"`
-	CreatedAt time.Time    `json:"created_at,omitempty"`
-	UpdatedAt time.Time    `json:"updated_at,omitempty"`
-	DeletedAt sql.NullTime `gorm:"index" json:"deleted_at,omitempty"`
-	Name      string       `gorm:"unique" json:"name,omitempty"`
-	Url       string       `gorm:"-" json:"url,omitempty"`
-	MD5       string       `gorm:"column:md5" json:"md5,omitempty"`
-	Err       error        `gorm:"-" json:"err,omitempty"`
-	Content   string       `gorm:"-" json:"content,omitempty"`
+	ID          uint         `gorm:"primarykey" json:"id,omitempty"`
+	CreatedAt   time.Time    `json:"created_at,omitempty"`
+	UpdatedAt   time.Time    `json:"updated_at,omitempty"`
+	DeletedAt   sql.NullTime `gorm:"index" json:"deleted_at,omitempty"`
+	Name        string       `gorm:"unique" json:"name,omitempty"`
+	DisplayName string       `gorm:"default('')" json:"display_name,omitempty"`
+	Url         string       `gorm:"-" json:"url,omitempty"`
+	MD5         string       `gorm:"column:md5" json:"md5,omitempty"`
+	Err         error        `gorm:"-" json:"err,omitempty"`
+	Content     string       `gorm:"-" json:"content,omitempty"`
 	// Publish   bool         `json:"publish,omitempty"`
 	TypeDoc TypeDoc `json:"type_doc,omitempty"`
 }
@@ -46,6 +47,12 @@ func GetListMdx(typeDoc int, offset, limit int) ([]Mdx, error) {
 	}
 	tx := GetDB().Model(new(Mdx)).Where(whereQuery)
 	tx = tx.Limit(limit).Offset(offset).Order("id DESC").Find(&ml)
+	for idx, v := range ml {
+		if len(v.DisplayName) == 0 {
+			v.DisplayName = v.Name
+		}
+		ml[idx] = v
+	}
 	return ml, tx.Error
 }
 
@@ -59,10 +66,16 @@ func (m *Mdx) Update(db *gorm.DB, id uint, changes map[string]interface{}) error
 
 func (m *Mdx) GetById(db *gorm.DB, uint int) error {
 	tx := db.Model(m).Where("id=?", uint).First(m)
+	if len(m.DisplayName) == 0 {
+		m.DisplayName = m.Name
+	}
 	return tx.Error
 }
 
 func (m *Mdx) GetByName(db *gorm.DB, name string) error {
 	tx := db.Model(m).Where("name=?", name).First(m)
+	if len(m.DisplayName) == 0 {
+		m.DisplayName = m.Name
+	}
 	return tx.Error
 }

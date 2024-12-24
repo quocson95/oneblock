@@ -2,7 +2,6 @@ package api
 
 import (
 	"be/common"
-	"be/database"
 	"io"
 	"net/http"
 	"strconv"
@@ -37,7 +36,14 @@ func (m *MdxController) List(c *gin.Context) {
 func (m *MdxController) Get(c *gin.Context) {
 	id := c.Param("id")
 	v := common.Mdx{}
-	database.DB.Model(new(common.Mdx)).Where("id=?", id).First(&v)
+	idInt, _ := strconv.Atoi(id)
+	err := v.GetById(common.GetDB(), idInt)
+	if err != nil {
+		zap.L().With(zap.Int("id", idInt)).With(zap.Error(err)).Error("get mdx by id failed")
+		c.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+
 	preSign, err := DefaultS3Hepler.PreSign(http.MethodGet, common.DefaultBucketMdx, v.Name)
 	if err != nil {
 		zap.L().With(zap.String("id", id)).With(zap.String("name", v.Name)).With(zap.Error(err)).Error("presign failed")

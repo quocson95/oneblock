@@ -40,30 +40,6 @@ func (m *MdxAdminController) List(c *gin.Context) {
 	c.JSON(http.StatusOK, ml)
 }
 
-func (m *MdxAdminController) Get(c *gin.Context) {
-	id := c.Param("id")
-	v := common.Mdx{}
-	database.DB.Model(new(common.Mdx)).Where("id=?", id).First(&v)
-	preSign, err := api.DefaultS3Hepler.PreSign(http.MethodGet, common.DefaultBucketMdx, v.Name)
-	if err != nil {
-		zap.L().With(zap.String("id", id)).With(zap.String("name", v.Name)).With(zap.Error(err)).Error("presign failed")
-		c.Abort()
-		return
-	}
-	v.Url = preSign.Url
-	if len(c.Query("loadContent")) > 0 {
-		resp, cleanup, err := common.QuickGetHttp(preSign.Method, preSign.Url, nil)
-		defer cleanup()
-		if err == nil {
-			content, _ := io.ReadAll(resp.Body)
-			v.Content = string(content)
-
-		}
-	}
-	c.JSON(http.StatusOK, v)
-
-}
-
 func (m *MdxAdminController) UploadMdx(c *gin.Context) {
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
@@ -117,13 +93,23 @@ func (m *MdxAdminController) UploadMdx(c *gin.Context) {
 	mdx := &common.Mdx{}
 	mdx.GetByName(database.DB, name)
 	mdx.Name = name
+	mdx.DisplayName = c.Query("dispName")
 	mdx.MD5 = common.QuickMd5(body)
 	mdx.UpdatedAt = time.Now()
 	if mdx.ID == 0 {
 		mdx.Insert(database.DB)
+		s3Sync := &common.S3ObjectSync{
+			Name:     name,
+			Bucket:   common.DefaultBucketMdx,
+			Source_1: common.SourceS3CloudFy,
+		}
+		if err := s3Sync.Insert(); err != nil {
+			zap.L().With(zap.Error(err)).Error("save s3 sync object failed")
+		}
 	} else {
 		mdx.Update(database.DB, (mdx.ID), map[string]interface{}{"md5": mdx.MD5, "updated_at": mdx.UpdatedAt})
 	}
+
 	mdx.GetByName(database.DB, name)
 	getPresign, _ := api.DefaultS3Hepler.PreSign(http.MethodGet, common.DefaultBucketMdx, name)
 	mdx.Url = getPresign.Url

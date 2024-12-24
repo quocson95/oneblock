@@ -1,6 +1,9 @@
 package cache
 
-import "sync"
+import (
+	"sync"
+	"time"
+)
 
 type CacheDataType int
 
@@ -12,6 +15,10 @@ const (
 var CacheData = sync.Map{}
 
 type ImageData struct {
-	Data []byte
-	Mime string
+	Data          []byte
+	Mime          string
+	Header        map[string]string
+	ContentLength int64
+	CreateAt      time.Time
+	InvalidAt     time.Time
 }

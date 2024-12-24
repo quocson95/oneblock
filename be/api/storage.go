@@ -1,6 +1,7 @@
 package api
 
 import (
+	"be/cache"
 	"be/common"
 	"bytes"
 	"errors"
@@ -109,22 +110,57 @@ func (h *S3Storage) StorageFile(c *gin.Context) {
 	bucket := c.Query("bucket")
 	name := c.Query("name")
 	if len(name) == 0 {
-		listS3(c)
+		h.StorageListObject(c)
 		return
 	}
 	key := bucket + name
-	v, exist := cachePreSign[key]
-	if exist && v.Expire > time.Now().Unix() {
-		c.Redirect(http.StatusFound, v.Url)
+	v, exist := cache.CacheData.Load(key)
+	var preSign *S3PreSign
+	var err error
+	if !exist {
+		zap.L().With(zap.String("bucket", bucket)).With(zap.String("name", name)).Info("not found cache image")
+		preSign, err = DefaultS3Hepler.PreSign(http.MethodGet, bucket, name)
+		if err != nil {
+			zap.L().With(zap.Error(err)).With(zap.String("bucket", bucket)).With(zap.String("name", name)).Error("presign failed")
+			c.AbortWithStatusJSON(http.StatusBadRequest, "presign failed")
+			return
+		}
+		resp, cleanup, err := common.QuickGetHttp(http.MethodGet, preSign.Url, nil)
+		defer cleanup()
+		if err != nil {
+			zap.L().With(zap.Error(err)).With(zap.String("bucket", bucket)).With(zap.String("name", name)).Error("get content presign failed")
+			c.AbortWithStatusJSON(http.StatusBadRequest, "presign failed")
+			return
+		}
+		image := cache.ImageData{
+			ContentLength: resp.ContentLength,
+			Mime:          resp.Header.Get("content-type"),
+			Header:        make(map[string]string),
+			InvalidAt:     time.Now().Add(24 * time.Hour),
+			CreateAt:      time.Now(),
+		}
+		for k, v := range resp.Header {
+			if len(v) == 0 {
+				continue
+			}
+			image.Header[k] = v[0]
+		}
+		image.Data, _ = io.ReadAll(resp.Body)
+		cache.CacheData.Store(key, image)
+		v = image
+		exist = true
+	}
+
+	if !exist {
+		c.Redirect(http.StatusFound, preSign.Url)
 		return
 	}
-	preSign, err := DefaultS3Hepler.PreSign(http.MethodGet, bucket, name)
-	if err != nil {
-		zap.L().With(zap.Error(err)).With(zap.String("bucket", bucket)).With(zap.String("name", name)).Error("presign failed")
-		c.AbortWithStatusJSON(http.StatusBadRequest, "presign failed")
-	}
-	cachePreSign[key] = preSign
-	c.Redirect(http.StatusFound, preSign.Url)
+	image := v.(cache.ImageData)
+	header := image.Header
+	header["Cache-Control"] = "public, max-age=86400"
+	header["Expires"] = image.InvalidAt.Format(http.TimeFormat)
+	header["Last-Modified"] = image.CreateAt.Format(http.TimeFormat)
+	c.DataFromReader(http.StatusOK, int64(image.ContentLength), image.Mime, bytes.NewBuffer(image.Data), header)
 }
 
 func (h *S3Storage) UploadStorageFile(c *gin.Context) {
@@ -146,11 +182,7 @@ func (h *S3Storage) UploadStorageFile(c *gin.Context) {
 	if bodyType == "image/png" || bodyType == "image/jpeg" {
 		nameWithoutExt := name[:len(name)-len(filepath.Ext(name))]
 		webpOut := &bytes.Buffer{}
-		err = webpbin.NewCWebP().
-			Quality(80).
-			Input(bytes.NewReader(body)).
-			Output(webpOut).
-			Run()
+		err = webpbin.NewCWebP().Quality(80).Input(bytes.NewReader(body)).Output(webpOut).Run()
 		if err == nil {
 			newName := nameWithoutExt + ".webp"
 			newBody := webpOut.Bytes()
@@ -159,10 +191,6 @@ func (h *S3Storage) UploadStorageFile(c *gin.Context) {
 				Info("convert image to webp ok")
 			name = newName
 			body = newBody
-		} else {
-			zap.L().Error("convert to webp")
-			c.JSON(http.StatusOK, common.Mdx{Err: errors.New("convert to webp")})
-			return
 		}
 	}
 	preSign, err := DefaultS3Hepler.PreSign(http.MethodPut, bucket, name)
@@ -195,6 +223,14 @@ func (h *S3Storage) UploadStorageFile(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, &S3StorageResp{Err: errors.New("upload failed")})
 		return
 	}
+	s3Sync := &common.S3ObjectSync{
+		Name:     name,
+		Bucket:   bucket,
+		Source_1: common.SourceS3CloudFy,
+	}
+	if err := s3Sync.Insert(); err != nil {
+		zap.L().With(zap.Error(err)).Error("save s3 sync object failed")
+	}
 	getPreSign, _ := url.Parse(fmt.Sprintf("https://%s/be/s3", c.Request.Host))
 	getPreSign.RawQuery = ""
 	query := url.Values{}
@@ -206,29 +242,23 @@ func (h *S3Storage) UploadStorageFile(c *gin.Context) {
 	})
 }
 
-func listS3(c *gin.Context) {
-	svc := DefaultS3Hepler.SVC()
-	bucket := c.Query("bucket")
-	lst, err := svc.ListObjectsV2(&s3.ListObjectsV2Input{
-		Bucket: aws.String(bucket),
-	})
+func (h *S3Storage) StorageListObject(c *gin.Context) {
+	offset := c.GetInt("offset")
+	limit := c.GetInt("limit")
+	bucket := c.GetString("bucket")
+	if limit <= 0 {
+		limit = 10
+	}
+	ml, err := common.GetS3ObjectsSync(bucket, offset, limit)
 	if err != nil {
-		c.JSON(http.StatusOK, "")
+		zap.L().With(zap.Error(err)).Error("get list s3 object failed")
+		c.AbortWithStatus(http.StatusBadRequest)
+		return
 	}
-	resp := &S3Dirs{
-		Files: make([]File, 0),
+	for idx, v := range ml {
+		preSignGet, _ := DefaultS3Hepler.PreSign(http.MethodGet, v.Bucket, v.Name)
+		v.PresignUrl = preSignGet.Url
+		ml[idx] = v
 	}
-	for _, v := range lst.Contents {
-		preSign, _ := DefaultS3Hepler.PreSign(http.MethodGet, bucket, *v.Key)
-
-		file := File{
-			Src:  preSign.Url,
-			Size: *v.Size,
-		}
-		if v.Owner != nil {
-			file.Filename = *v.Owner.DisplayName
-		}
-		resp.Files = append(resp.Files, file)
-	}
-	c.JSON(http.StatusOK, resp)
+	c.JSON(http.StatusOK, ml)
 }
