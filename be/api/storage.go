@@ -223,6 +223,8 @@ func (h *S3Storage) UploadStorageFile(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, &S3StorageResp{Err: errors.New("upload failed")})
 		return
 	}
+	key := bucket + name
+	cache.CacheData.Delete(key)
 	s3Sync := &common.S3ObjectSync{
 		Name:     name,
 		Bucket:   bucket,
