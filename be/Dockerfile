@@ -15,7 +15,7 @@ RUN go mod download
 COPY . .
 ENV GOCACHE=/root/.cache/go-build
 # Build the Go app
-RUN --mount=type=cache,target="/root/.cache/go-build" go build -ldflags="-s -w" -o oneblock_backend .
+RUN --mount=type=cache,target="/root/.cache/go-build" CGO_ENABLED=0 go build -ldflags="-s -w -X 'main.Version=1.0.0' -X 'main.BuildTime=$(date)' -X 'main.Commit=$(git rev-parse HEAD)'" -o oneblock_backend .
 RUN chmod +x oneblock_backend
 
 # Start a new stage from scratch

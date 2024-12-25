@@ -21,6 +21,12 @@ import (
 	"gorm.io/gorm"
 )
 
+var (
+	Version   string
+	BuildTime string
+	Commit    string
+)
+
 func init() {
 	config := zap.NewDevelopmentConfig()
 	config.EncoderConfig.TimeKey = "time"
@@ -29,6 +35,7 @@ func init() {
 	config.DisableStacktrace = true
 	logger, _ := config.Build(zap.AddCaller())
 	zap.ReplaceGlobals(logger)
+	zap.L().With(zap.String("version", Version)).With(zap.String("BuildTime", BuildTime)).With(zap.String("Commit", Commit)).Info("build info")
 }
 
 func main() {
