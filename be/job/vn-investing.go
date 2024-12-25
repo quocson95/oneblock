@@ -1,4 +1,4 @@
-package api
+package job
 
 import (
 	"be/common"
@@ -9,26 +9,8 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
-
-type VnInvestingCrawl struct{}
-
-func (v *VnInvestingCrawl) Handler(g gin.IRoutes) {
-	g.GET("", v.GetCraw)
-	g.GET("/", v.GetCraw)
-}
-
-func (v *VnInvestingCrawl) GetCraw(c *gin.Context) {
-	events, err := Crawl()
-	if err != nil {
-		zap.L().With(zap.Error(err)).Error("craw failed")
-		c.AbortWithStatus(http.StatusBadRequest)
-		return
-	}
-	c.JSON(http.StatusOK, events)
-}
 
 func Crawl() ([]common.EconomicEvent, error) {
 	url := "https://vn.investing.com/economic-calendar/"
@@ -95,6 +77,35 @@ func Crawl() ([]common.EconomicEvent, error) {
 	return events, nil
 }
 
+func JobCrawlInvestingCalendar() error {
+	events, err := Crawl()
+	if err != nil {
+		zap.L().With(zap.Error(err)).Error("craw failed")
+		return err
+	}
+	for _, event := range events {
+		ics := common.ICS{
+			Uid:       common.QuickMd5([]byte(fmt.Sprintf("%s_%d", event.Actual, event.TimeUnix))),
+			Name:      event.Actual,
+			Desp:      fmt.Sprintf("%s Dự báo(%s) Trước đó(%s)", event.Actual, event.Forecast, event.Previous),
+			StartUnix: event.TimeUnix,
+			EndUnix:   event.TimeUnix + 30*60,
+		}
+		err = ics.Insert()
+		if err != nil && !strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
+			zap.L().With(zap.Error(err)).Error("insert new ics failed")
+			return nil
+		}
+	}
+	logEvent := common.CrawlLog{
+		EventId:  common.CrawlLogEventIdInvestingCalendar,
+		DataObjs: events,
+	}
+	if err := logEvent.Insert(); err != nil {
+		zap.L().With(zap.Error(err)).Error("insert log craw failed")
+	}
+	return nil
+}
 func JobCrawAndImportEventInvestingCalendar(ctx context.Context) {
 	lastRunSucces := time.Time{}
 	fnCrawAndImport := func() {
@@ -117,7 +128,7 @@ func JobCrawAndImportEventInvestingCalendar(ctx context.Context) {
 				return
 			}
 		}
-		logEvent := common.VnInvestingCrawlLog{
+		logEvent := common.CrawlLog{
 			DataObjs: events,
 		}
 		if err := logEvent.Insert(); err != nil {

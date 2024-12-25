@@ -2,10 +2,12 @@ package common
 
 import (
 	"bufio"
+	"bytes"
 	"crypto/md5"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -13,7 +15,16 @@ import (
 	"gorm.io/gorm"
 )
 
-const DefaultBucketMdx = "mdx"
+type Bucket string
+
+func (b Bucket) String() string {
+	return string(b)
+}
+
+const (
+	DefaultBucketMdx   Bucket = "mdx"
+	DefaultBucketCrawl Bucket = "crawl"
+)
 
 var GetDB func() *gorm.DB
 
@@ -97,4 +108,14 @@ func GetWeekRange(t time.Time) (time.Time, time.Time) {
 	endOfWeek := startOfWeek.AddDate(0, 0, 6).Add(23*time.Hour + 59*time.Minute + 59*time.Second)
 
 	return startOfWeek, endOfWeek
+}
+
+func NewHttpRequest(method, url string, body []byte) (*http.Request, error) {
+	req, err := http.NewRequest(method, url, bytes.NewBuffer(body))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", http.DetectContentType(body))
+	req.ContentLength = int64(len(body))
+	return req, nil
 }

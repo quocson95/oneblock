@@ -49,7 +49,7 @@ func (m *MdxAdminController) UploadMdx(c *gin.Context) {
 	// buf := &bytes.Buffer{}
 	// zw := gzip.NewWriter(buf)
 	name := c.Query("name")
-	preSign, err := api.DefaultS3Hepler.PreSign(http.MethodPut, common.DefaultBucketMdx, name)
+	preSign, err := common.DefaultS3Hepler.PreSign(http.MethodPut, common.DefaultBucketMdx.String(), name)
 	if err != nil {
 		zap.L().With(zap.Error(err)).Error("presign failed")
 		// c.AbortWithError(http.StatusBadRequest, errors.New("presign failed"))
@@ -100,7 +100,7 @@ func (m *MdxAdminController) UploadMdx(c *gin.Context) {
 		mdx.Insert(database.DB)
 		s3Sync := &common.S3ObjectSync{
 			Name:     name,
-			Bucket:   common.DefaultBucketMdx,
+			Bucket:   common.DefaultBucketMdx.String(),
 			Source_1: common.SourceS3CloudFy,
 		}
 		if err := s3Sync.Insert(); err != nil {
@@ -111,7 +111,7 @@ func (m *MdxAdminController) UploadMdx(c *gin.Context) {
 	}
 
 	mdx.GetByName(database.DB, name)
-	getPresign, _ := api.DefaultS3Hepler.PreSign(http.MethodGet, common.DefaultBucketMdx, name)
+	getPresign, _ := common.DefaultS3Hepler.PreSign(http.MethodGet, common.DefaultBucketMdx.String(), name)
 	mdx.Url = getPresign.Url
 	c.JSON(http.StatusOK, mdx)
 }

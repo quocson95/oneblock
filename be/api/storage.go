@@ -12,25 +12,11 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	s3_credentials "github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/request"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/nickalie/go-webpbin"
 	"go.uber.org/zap"
 )
-
-type S3PreSign struct {
-	Method string `json:"method,omitempty"`
-	Url    string `json:"url,omitempty"`
-	Expire int64  `json:"expire,omitempty"`
-}
-type S3Helper struct {
-	svc *s3.S3
-}
 
 type S3Dirs struct {
 	Files []File `json:"files"`
@@ -47,59 +33,9 @@ func init() {
 	uuid.EnableRandPool()
 }
 
-func (s *S3Helper) Init(endpoint, region, accessKey, secretKey string) error {
-	sess, err := session.NewSession(&aws.Config{
-		Region:           aws.String(region),
-		Endpoint:         aws.String(endpoint),
-		DisableSSL:       aws.Bool(false),
-		S3ForcePathStyle: aws.Bool(true),
-		Credentials: s3_credentials.NewStaticCredentials(
-			accessKey, secretKey, "",
-		),
-	})
-	if err != nil {
-		return err
-	}
-	s.svc = s3.New(sess)
-	return nil
-}
-func (s *S3Helper) SVC() *s3.S3 {
-	return s.svc
-}
-func (s *S3Helper) PreSign(method string, bucket string, nameFile string) (*S3PreSign, error) {
-	var req *request.Request
-	if method == http.MethodGet {
-		req, _ = s.svc.GetObjectRequest(&s3.GetObjectInput{
-			Bucket: aws.String(bucket),
-			Key:    aws.String(nameFile),
-		})
-	} else {
-		req, _ = s.svc.PutObjectRequest(&s3.PutObjectInput{
-			Bucket: aws.String(bucket),
-			Key:    aws.String(nameFile),
-		})
-	}
-
-	expire := 23 * time.Hour
-	preSign, err := req.Presign(expire)
-	if err != nil {
-		return &S3PreSign{}, err
-	}
-	return &S3PreSign{
-		Method: method,
-		Url:    preSign,
-		Expire: time.Now().Add(expire).Add(-10 * time.Minute).Unix(),
-	}, nil
-}
-
-var DefaultS3Hepler = &S3Helper{}
-var cachePreSign = make(map[string]*S3PreSign)
+var cachePreSign = make(map[string]*common.S3PreSign)
 
 type S3Storage struct{}
-type S3StorageResp struct {
-	Url string `json:"url,omitempty"`
-	Err error  `json:"err,omitempty"`
-}
 
 func (h *S3Storage) Handler(c *gin.RouterGroup) {
 	c.GET("/", h.StorageFile)
@@ -115,11 +51,11 @@ func (h *S3Storage) StorageFile(c *gin.Context) {
 	}
 	key := bucket + name
 	v, exist := cache.CacheData.Load(key)
-	var preSign *S3PreSign
+	var preSign *common.S3PreSign
 	var err error
 	if !exist {
 		zap.L().With(zap.String("bucket", bucket)).With(zap.String("name", name)).Info("not found cache image")
-		preSign, err = DefaultS3Hepler.PreSign(http.MethodGet, bucket, name)
+		preSign, err = common.DefaultS3Hepler.PreSign(http.MethodGet, bucket, name)
 		if err != nil {
 			zap.L().With(zap.Error(err)).With(zap.String("bucket", bucket)).With(zap.String("name", name)).Error("presign failed")
 			c.AbortWithStatusJSON(http.StatusBadRequest, "presign failed")
@@ -193,7 +129,7 @@ func (h *S3Storage) UploadStorageFile(c *gin.Context) {
 			body = newBody
 		}
 	}
-	preSign, err := DefaultS3Hepler.PreSign(http.MethodPut, bucket, name)
+	preSign, err := common.DefaultS3Hepler.PreSign(http.MethodPut, bucket, name)
 	if err != nil {
 		zap.L().With(zap.Error(err)).Error("presign put failed")
 		c.JSON(http.StatusOK, common.Mdx{Err: errors.New("presign put failed")})
@@ -213,14 +149,14 @@ func (h *S3Storage) UploadStorageFile(c *gin.Context) {
 	resp, err := common.DefaultHttpClient.Do(client)
 	if err != nil {
 		zap.L().With(zap.String("name", name)).With(zap.String("bucket", bucket)).With(zap.Error(err)).Error("upload failed")
-		c.JSON(http.StatusBadRequest, &S3StorageResp{Err: errors.New("upload failed")})
+		c.JSON(http.StatusBadRequest, &common.S3StorageResp{Err: errors.New("upload failed")})
 		return
 	}
 	if resp.StatusCode != http.StatusOK {
 		bodyErr, _ := io.ReadAll(resp.Body)
 		resp.Body.Close()
 		zap.L().With(zap.String("name", name)).With(zap.String("bucket", bucket)).With(zap.ByteString("body", bodyErr)).Error("upload failed")
-		c.JSON(http.StatusBadRequest, &S3StorageResp{Err: errors.New("upload failed")})
+		c.JSON(http.StatusBadRequest, &common.S3StorageResp{Err: errors.New("upload failed")})
 		return
 	}
 	key := bucket + name
@@ -239,7 +175,7 @@ func (h *S3Storage) UploadStorageFile(c *gin.Context) {
 	query.Add("name", name)
 	query.Add("bucket", bucket)
 	getPreSign.RawQuery = query.Encode()
-	c.JSON(http.StatusOK, &S3StorageResp{
+	c.JSON(http.StatusOK, &common.S3StorageResp{
 		Url: getPreSign.String(),
 	})
 }
@@ -258,7 +194,7 @@ func (h *S3Storage) StorageListObject(c *gin.Context) {
 		return
 	}
 	for idx, v := range ml {
-		preSignGet, _ := DefaultS3Hepler.PreSign(http.MethodGet, v.Bucket, v.Name)
+		preSignGet, _ := common.DefaultS3Hepler.PreSign(http.MethodGet, v.Bucket, v.Name)
 		v.PresignUrl = preSignGet.Url
 		ml[idx] = v
 	}

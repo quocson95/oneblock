@@ -50,7 +50,7 @@ func (i *ICSAdminController) Get(c *gin.Context) {
 }
 
 func (i *ICSAdminController) ListLogCraw(c *gin.Context) {
-	ml, err := common.GetVnInvestingCrawlLogs(0, 1000)
+	ml, err := common.GetCrawlLogs(0, 1000)
 	if err != nil {
 		zap.L().With(zap.Error(err)).Error("get log craw failed")
 		c.AbortWithStatus(http.StatusBadRequest)

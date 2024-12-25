@@ -6,6 +6,7 @@ import (
 	"be/common"
 	"be/config"
 	"be/database"
+	"be/job"
 	"be/security"
 	"be/sp500"
 	"context"
@@ -40,7 +41,7 @@ func init() {
 
 func main() {
 	config.LoadConfig("config.json")
-	api.DefaultS3Hepler.Init(config.GetConfig().S3Endpoint, "hcm", config.GetConfig().S3AccessKey, config.GetConfig().S3SecretKey)
+	common.DefaultS3Hepler.Init(config.GetConfig().S3Endpoint, "hcm", config.GetConfig().S3AccessKey, config.GetConfig().S3SecretKey)
 	// e := echo.New()
 	// e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 	// 	AllowOrigins: []string{"*"},                                                      // Allow all origins
@@ -48,18 +49,17 @@ func main() {
 	// 	AllowHeaders: []string{echo.HeaderContentType, echo.HeaderAccept},
 	// }))
 	port := 8080
-	err := database.InitDB(config.GetConfig().PostgressDsn)
-	database.DB.AutoMigrate(new(common.Mdx), new(common.User), new(common.ICS), new(common.VnInvestingCrawlLog), new(common.S3ObjectSync))
-
+	if err := database.InitDB(config.GetConfig().PostgressDsn); err != nil {
+		panic(fmt.Errorf("init db failed: %s", err.Error()))
+	}
+	database.DB.AutoMigrate(new(common.Mdx), new(common.User), new(common.ICS), new(common.CrawlLog), new(common.S3ObjectSync))
 	common.GetDB = func() *gorm.DB {
 		return database.DB
 	}
-	if err != nil {
-		panic(err)
-	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	go api.JobCrawAndImportEventInvestingCalendar(ctx)
+	_ = ctx
+	go job.StartJob(ctx)
 	startServeAPI(port, func(router *gin.Engine) {
 		router.Static("/be/static", "static")
 
@@ -89,7 +89,6 @@ func main() {
 		new(api.AccountApi).Handler(router.Group("/be/account"))
 		api.NewOath2Api(config.GetConfig().GoogleConsole).Handler(router.Group("/be/auth"))
 		new(api.ICSAPi).Handler(router.Group("/be/ics"))
-		new(api.VnInvestingCrawl).Handler(router.Group("/be/vn-investing"))
 
 		//auth
 		new(apiadmin.MdxAdminController).Handler(router.Group("/be/admin/mdx").Use(security.TokenAuthMiddleware(database.DB)))

@@ -44,7 +44,7 @@ func (m *MdxController) Get(c *gin.Context) {
 		return
 	}
 
-	preSign, err := DefaultS3Hepler.PreSign(http.MethodGet, common.DefaultBucketMdx, v.Name)
+	preSign, err := common.DefaultS3Hepler.PreSign(http.MethodGet, common.DefaultBucketMdx.String(), v.Name)
 	if err != nil {
 		zap.L().With(zap.String("id", id)).With(zap.String("name", v.Name)).With(zap.Error(err)).Error("presign failed")
 		c.Abort()
@@ -57,7 +57,6 @@ func (m *MdxController) Get(c *gin.Context) {
 		if err == nil {
 			content, _ := io.ReadAll(resp.Body)
 			v.Content = string(content)
-
 		}
 	}
 	c.JSON(http.StatusOK, v)

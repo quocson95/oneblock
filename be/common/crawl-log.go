@@ -7,6 +7,14 @@ import (
 	"gorm.io/gorm"
 )
 
+type CrawlLogEventId string
+
+const (
+	CrawlLogEventIdInvestingCalendar  CrawlLogEventId = "crawl_investing_calendar"
+	CrawlLogEventIdDataTradingBtcGold CrawlLogEventId = "crawl_data_trading_btc_gold"
+	CrawlLogEventIdDataTradingSP500   CrawlLogEventId = "crawl_data_trading_sp500"
+)
+
 type EconomicEvent struct {
 	DateTime string `json:"datetime"`
 	TimeUnix int64  `json:"timeUnix"`
@@ -17,13 +25,14 @@ type EconomicEvent struct {
 	Previous string `json:"previous"`
 }
 
-type VnInvestingCrawlLog struct {
+type CrawlLog struct {
 	gorm.Model
-	Data     string          `json:"-"`
-	DataObjs []EconomicEvent `gorm:"-" json:"Data"`
+	EventId  CrawlLogEventId `json:"craw_name,omitempty"`
+	Data     string          `json:"-,omitempty"`
+	DataObjs []EconomicEvent `gorm:"-" json:"Data,omitempty"`
 }
 
-func (v *VnInvestingCrawlLog) Insert() error {
+func (v *CrawlLog) Insert() error {
 	v.CreatedAt = time.Now()
 	v.UpdatedAt = time.Now()
 	v.ID = 0
@@ -35,9 +44,9 @@ func (v *VnInvestingCrawlLog) Insert() error {
 	return tx.Error
 }
 
-func GetVnInvestingCrawlLogs(offset, limit int) ([]VnInvestingCrawlLog, error) {
-	ml := make([]VnInvestingCrawlLog, 0, limit)
-	tx := GetDB().Model(new(VnInvestingCrawlLog)).Offset(offset).Limit(limit).Order("created_at DESC").Find(&ml)
+func GetCrawlLogs(offset, limit int) ([]CrawlLog, error) {
+	ml := make([]CrawlLog, 0, limit)
+	tx := GetDB().Model(new(CrawlLog)).Offset(offset).Limit(limit).Order("created_at DESC").Find(&ml)
 	for idx, v := range ml {
 		v.DataObjs = make([]EconomicEvent, 0)
 		json.Unmarshal([]byte(v.Data), &v.DataObjs)
