@@ -50,7 +50,7 @@ func (h *S3Storage) StorageFile(c *gin.Context) {
 		return
 	}
 	key := bucket + name
-	v, exist := common.CacheImageData.Get(key)
+	v, exist := common.CacheDataPool.Get(key)
 	var preSign *common.S3PreSign
 	var err error
 	if noCache || !exist {
@@ -68,7 +68,7 @@ func (h *S3Storage) StorageFile(c *gin.Context) {
 			c.AbortWithStatusJSON(http.StatusBadRequest, "presign failed")
 			return
 		}
-		image := common.ImageData{
+		image := common.CacheData{
 			ContentLength: resp.ContentLength,
 			Mime:          resp.Header.Get("content-type"),
 			Header:        make(map[string]string),
@@ -82,7 +82,8 @@ func (h *S3Storage) StorageFile(c *gin.Context) {
 			image.Header[k] = v[0]
 		}
 		image.Data, _ = io.ReadAll(resp.Body)
-		common.CacheImageData.Add(key, image)
+		image.Compress()
+		common.CacheDataPool.Add(key, image)
 		v = image
 		exist = true
 	}
@@ -96,6 +97,7 @@ func (h *S3Storage) StorageFile(c *gin.Context) {
 	header["Cache-Control"] = "public, max-age=86400"
 	header["Expires"] = image.InvalidAt.Format(http.TimeFormat)
 	header["Last-Modified"] = image.CreateAt.Format(http.TimeFormat)
+	header["Content-Encoding"] = image.ContentEncoding
 	c.DataFromReader(http.StatusOK, int64(image.ContentLength), image.Mime, bytes.NewBuffer(image.Data), header)
 }
 
@@ -160,7 +162,7 @@ func (h *S3Storage) UploadStorageFile(c *gin.Context) {
 		return
 	}
 	key := bucket + name
-	common.CacheImageData.Remove(key)
+	common.CacheDataPool.Remove(key)
 	s3Sync := &common.S3ObjectSync{
 		Name:     name,
 		Bucket:   bucket,
