@@ -24,6 +24,13 @@ func (i *ICS) GetById(id uint) error {
 	return tx.Error
 }
 
+func (i *ICS) GetByUId(uid string) error {
+	if len(uid) == 0 {
+		return errors.New("id not allow less than zero")
+	}
+	tx := GetDB().Model(i).Where("uid=?", uid).First(i)
+	return tx.Error
+}
 func InsertMultiICS(ml []ICS) error {
 	tx := GetDB().CreateInBatches(ml, len(ml))
 	return tx.Error
@@ -34,6 +41,12 @@ func (i *ICS) Insert() error {
 	i.UpdatedAt = i.CreatedAt
 	tx := GetDB().Create(i)
 	return tx.Error
+}
+
+func (i *ICS) Exist() bool {
+	exists := false
+	_ = GetDB().Model(i).Select("count(*) > 0").Where("uid = ?", i.Uid).Find(&exists).Error
+	return exists
 }
 
 func GetICS(start, end time.Time, offset int, limit int) ([]ICS, error) {
@@ -54,4 +67,12 @@ func (i *ICS) Updates(changes map[string]interface{}) error {
 	}
 	changes["updated_at"] = time.Now()
 	return GetDB().Model(i).Where("id=? and deleted_at is null", i.ID).Updates(changes).Error
+}
+
+func (i *ICS) Delete() error {
+	if i.ID == 0 && len(i.Uid) == 0 {
+		return errors.New("uid is empty")
+	}
+	tx := GetDB().Model(i).Where("uid=?", i.Uid).Delete(i)
+	return tx.Error
 }

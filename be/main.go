@@ -85,7 +85,6 @@ func main() {
 		router.GET("/be/data/eth_gas_history", api.EthGasHistory)
 		router.GET("/be/data/usd_vnd", api.USDVNDRate)
 		new(api.MdxController).Handler(router.Group("/be/mdx"))
-		new(api.TradingViewApi).Handler(router.Group("/be/tradingview"))
 		new(api.AccountApi).Handler(router.Group("/be/account"))
 		api.NewOath2Api(config.GetConfig().GoogleConsole).Handler(router.Group("/be/auth"))
 		new(api.ICSAPi).Handler(router.Group("/be/ics"))

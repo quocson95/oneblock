@@ -31,7 +31,11 @@ func StartJob(ctx context.Context) {
 	}
 	ticker := time.NewTicker(1 * time.Minute)
 	for _, v := range jobs {
-		v.Fn()
+		err := v.Fn()
+		if err == nil {
+			v.LastRunSuccess = time.Now()
+		}
+
 	}
 	for {
 		select {
@@ -43,7 +47,7 @@ func StartJob(ctx context.Context) {
 			for jobID, jobDesp := range jobs {
 				_ = jobID
 				lastRunSuccess := jobDesp.LastRunSuccess
-				if now.Day() != lastRunSuccess.Day() || now.Add(-6*time.Hour).Before(lastRunSuccess) {
+				if now.Day() != lastRunSuccess.Day() || now.Add(-6*time.Hour).After(lastRunSuccess) {
 					go func() {
 						err := jobDesp.Fn()
 						if err == nil {

@@ -1,7 +1,6 @@
 package security
 
 import (
-	"be/cache"
 	"be/common"
 	"net/http"
 
@@ -25,11 +24,13 @@ func TokenAuthMiddleware(db *gorm.DB) gin.HandlerFunc {
 			c.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
-		if cacheUser, ok := cache.CacheData.Load(cache.CacheDataTypeUser); ok {
-			if v, ok := cacheUser.(*common.User); ok && v != nil {
-				c.Set("user", v)
-				c.Next()
+		if cacheUser, ok := common.CacheUser.Get(token); ok {
+			user := &common.User{
+				UserName: cacheUser.UserName,
+				Email:    cacheUser.Email,
 			}
+			c.Set("user", user)
+			c.Next()
 		}
 		err = user.Read()
 		if err != nil {
@@ -38,7 +39,7 @@ func TokenAuthMiddleware(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 		c.Set("user", user)
-		cache.CacheData.Store(cache.CacheDataTypeUser, user)
+		common.CacheUser.Add(token, *user)
 		c.Next()
 	}
 }

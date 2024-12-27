@@ -1,18 +1,14 @@
-package cache
+package common
 
 import (
-	"sync"
 	"time"
+
+	lru "github.com/hashicorp/golang-lru/v2"
 )
 
-type CacheDataType int
+var CacheImageData, _ = lru.New[string, ImageData](2048)
 
-const (
-	CacheDataTypeImage CacheDataType = iota
-	CacheDataTypeUser  CacheDataType = iota
-)
-
-var CacheData = sync.Map{}
+var CacheUser, _ = lru.New[string, User](1024)
 
 type ImageData struct {
 	Data          []byte

@@ -30,6 +30,29 @@ func (s *S3ObjectSync) Insert() error {
 	return tx.Error
 }
 
+func (s *S3ObjectSync) InsertOrUpdate() error {
+	v := &S3ObjectSync{
+		Name:   s.Name,
+		Bucket: s.Bucket,
+	}
+	_ = GetDB().First(v).Error
+	if v.ID > 0 {
+		// exist, do update
+		changes := make(map[string]interface{})
+		if s.Source_1 != v.Source_1 {
+			changes["source_1"] = s.Source_1
+		}
+		if s.Source_1 != v.Source_1 {
+			changes["source_2"] = s.Source_2
+		}
+		if len(changes) == 0 {
+			return nil
+		}
+		GetDB().Model(v).Updates(changes)
+	}
+	return s.Insert()
+}
+
 func GetS3ObjectsSync(bucket string, offset, limit int) ([]S3ObjectSync, error) {
 	ml := make([]S3ObjectSync, 0)
 	tx := GetDB().Model(new(S3ObjectSync))

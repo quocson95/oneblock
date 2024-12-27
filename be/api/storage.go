@@ -1,7 +1,6 @@
 package api
 
 import (
-	"be/cache"
 	"be/common"
 	"bytes"
 	"errors"
@@ -45,15 +44,16 @@ func (h *S3Storage) Handler(c *gin.RouterGroup) {
 func (h *S3Storage) StorageFile(c *gin.Context) {
 	bucket := c.Query("bucket")
 	name := c.Query("name")
+	noCache := c.Query("noCache") == "true"
 	if len(name) == 0 {
 		h.StorageListObject(c)
 		return
 	}
 	key := bucket + name
-	v, exist := cache.CacheData.Load(key)
+	v, exist := common.CacheImageData.Get(key)
 	var preSign *common.S3PreSign
 	var err error
-	if !exist {
+	if noCache || !exist {
 		zap.L().With(zap.String("bucket", bucket)).With(zap.String("name", name)).Info("not found cache image")
 		preSign, err = common.DefaultS3Hepler.PreSign(http.MethodGet, bucket, name)
 		if err != nil {
@@ -68,7 +68,7 @@ func (h *S3Storage) StorageFile(c *gin.Context) {
 			c.AbortWithStatusJSON(http.StatusBadRequest, "presign failed")
 			return
 		}
-		image := cache.ImageData{
+		image := common.ImageData{
 			ContentLength: resp.ContentLength,
 			Mime:          resp.Header.Get("content-type"),
 			Header:        make(map[string]string),
@@ -82,7 +82,7 @@ func (h *S3Storage) StorageFile(c *gin.Context) {
 			image.Header[k] = v[0]
 		}
 		image.Data, _ = io.ReadAll(resp.Body)
-		cache.CacheData.Store(key, image)
+		common.CacheImageData.Add(key, image)
 		v = image
 		exist = true
 	}
@@ -91,7 +91,7 @@ func (h *S3Storage) StorageFile(c *gin.Context) {
 		c.Redirect(http.StatusFound, preSign.Url)
 		return
 	}
-	image := v.(cache.ImageData)
+	image := v
 	header := image.Header
 	header["Cache-Control"] = "public, max-age=86400"
 	header["Expires"] = image.InvalidAt.Format(http.TimeFormat)
@@ -160,7 +160,7 @@ func (h *S3Storage) UploadStorageFile(c *gin.Context) {
 		return
 	}
 	key := bucket + name
-	cache.CacheData.Delete(key)
+	common.CacheImageData.Remove(key)
 	s3Sync := &common.S3ObjectSync{
 		Name:     name,
 		Bucket:   bucket,

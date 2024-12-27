@@ -110,7 +110,7 @@ func (c *CrawlDataTrading) upload(name string, data []byte) error {
 		Bucket:   bucket,
 		Source_1: common.SourceS3CloudFy,
 	}
-	if err := s3Sync.Insert(); err != nil {
+	if err := s3Sync.InsertOrUpdate(); err != nil {
 		zap.L().With(zap.String("name", s3Sync.Name)).With(zap.String("bucket", s3Sync.Bucket)).With(zap.Error(err)).Error("insert s3 sync failed")
 	}
 	return nil

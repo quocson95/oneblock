@@ -91,7 +91,12 @@ func JobCrawlInvestingCalendar() error {
 			StartUnix: event.TimeUnix,
 			EndUnix:   event.TimeUnix + 30*60,
 		}
-		err = ics.Insert()
+		if (ics).Exist() {
+			ics.Updates(map[string]interface{}{"desp": ics.Desp})
+		} else {
+			err = ics.Insert()
+
+		}
 		if err != nil && !strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
 			zap.L().With(zap.Error(err)).Error("insert new ics failed")
 			return nil
