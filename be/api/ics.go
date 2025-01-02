@@ -19,6 +19,7 @@ func (i *ICSAPi) Handler(g gin.IRoutes) {
 
 func (i *ICSAPi) Calendar(c *gin.Context) {
 	start, end := common.GetWeekRange(time.Now())
+	start = start.Add(-7 * 24 * time.Hour)
 	ml, err := common.GetICS(start, end, 0, 1000)
 	if err != nil {
 		c.Abort()

@@ -4,7 +4,8 @@ services:
     build:
       context: ./be
     ports:
-      - "8080:8080"
+      - "8080:80"
+      - "8081:81"
     restart: always  
     depends_on:
       - db

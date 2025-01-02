@@ -12,11 +12,13 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/labstack/echo/v4"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"gorm.io/gorm"
@@ -28,7 +30,7 @@ var (
 	Commit    string
 )
 
-func init() {
+func init() {	
 	config := zap.NewDevelopmentConfig()
 	config.EncoderConfig.TimeKey = "time"
 	config.EncoderConfig.EncodeTime = zapcore.RFC3339TimeEncoder
@@ -40,6 +42,7 @@ func init() {
 }
 
 func main() {
+	go startMetricsHandler(81)
 	config.LoadConfig("config.json")
 	common.DefaultS3Hepler.Init(config.GetConfig().S3Endpoint, "hcm", config.GetConfig().S3AccessKey, config.GetConfig().S3SecretKey)
 	// e := echo.New()
@@ -48,7 +51,7 @@ func main() {
 	// 	AllowMethods: []string{echo.GET, echo.POST, echo.PUT, echo.DELETE, echo.OPTIONS}, // Allow all methods
 	// 	AllowHeaders: []string{echo.HeaderContentType, echo.HeaderAccept},
 	// }))
-	port := 8080
+	port := 80
 	if err := database.InitDB(config.GetConfig().PostgressDsn); err != nil {
 		panic(fmt.Errorf("init db failed: %s", err.Error()))
 	}
@@ -56,11 +59,11 @@ func main() {
 	common.GetDB = func() *gorm.DB {
 		return database.DB
 	}
-
 	ctx, cancel := context.WithCancel(context.Background())
 	_ = ctx
 	go job.StartJob(ctx)
 	startServeAPI(port, func(router *gin.Engine) {
+		// defer pprof.Register(router)
 		router.Static("/be/static", "static")
 
 		router.Static("/be/chart", "chart")
@@ -158,4 +161,9 @@ func createDefaultUser() {
 			zap.L().With(zap.Error(err)).With(zap.String("email", email)).Error("add user failed")
 		}
 	}
+}
+
+func startMetricsHandler(port int) {
+	http.Handle("/metrics", promhttp.Handler())
+	http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
 }

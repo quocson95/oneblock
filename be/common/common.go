@@ -93,6 +93,10 @@ func QuickMd5(data []byte) string {
 
 func GetWeekRange(t time.Time) (time.Time, time.Time) {
 	// Get the weekday (0=Sunday, 1=Monday, ..., 6=Saturday)
+	return GetNWeekRange(1, t)
+}
+
+func GetNWeekRange(nWeek int, t time.Time) (time.Time, time.Time) {
 	weekday := int(t.Weekday())
 
 	// Adjust for start of the week (Monday)
@@ -105,8 +109,8 @@ func GetWeekRange(t time.Time) (time.Time, time.Time) {
 	startOfWeek := t.AddDate(0, 0, -weekday+1).Truncate(24 * time.Hour)
 
 	// End of the week (Sunday)
-	endOfWeek := startOfWeek.AddDate(0, 0, 6).Add(23*time.Hour + 59*time.Minute + 59*time.Second)
-
+	oneDay := 23*time.Hour + 59*time.Minute + 59*time.Second
+	endOfWeek := startOfWeek.AddDate(0, 0, (nWeek*7 - 1)).Add(oneDay)
 	return startOfWeek, endOfWeek
 }
 
