@@ -14,7 +14,7 @@ type JobDesp struct {
 	LastRunSuccess time.Time
 }
 
-func StartJob(ctx context.Context) {
+func StartJobCrawl(ctx context.Context) {
 	jobs := make(map[common.CrawlLogEventId]*JobDesp)
 	jobs[common.CrawlLogEventIdInvestingCalendar] = &JobDesp{
 		Fn:       JobCrawlInvestingCalendar,

@@ -12,13 +12,19 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"path/filepath"
+	"strconv"
 	"strings"
+
 	"time"
 
+	"github.com/andybalholm/brotli"
+	"github.com/andybalholm/brotli/matchfinder"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/labstack/echo/v4"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	_ "go.uber.org/automaxprocs"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"gorm.io/gorm"
@@ -30,7 +36,7 @@ var (
 	Commit    string
 )
 
-func init() {	
+func init() {
 	config := zap.NewDevelopmentConfig()
 	config.EncoderConfig.TimeKey = "time"
 	config.EncoderConfig.EncodeTime = zapcore.RFC3339TimeEncoder
@@ -61,7 +67,9 @@ func main() {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	_ = ctx
-	go job.StartJob(ctx)
+	go job.StartJobCrawl(ctx)
+	go job.StartJobCompressImage(ctx)
+
 	startServeAPI(port, func(router *gin.Engine) {
 		// defer pprof.Register(router)
 		router.Static("/be/static", "static")
@@ -117,7 +125,7 @@ func startServeAPI(port int, handler func(router *gin.Engine), onErr func(err er
 		// AllowOrigins:     []string{"https://*on"},
 		AllowMethods:     []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodOptions, http.MethodDelete},
 		AllowHeaders:     []string{echo.HeaderContentType, echo.HeaderAccept, "user-agent", "referer", "Cookie", "Authorize"},
-		ExposeHeaders:    []string{"Content-Length"},
+		ExposeHeaders:    []string{"Content-Length", "Access-Control-Allow-Origin"},
 		AllowCredentials: true,
 		AllowOriginFunc: func(origin string) bool {
 			if _, exist := trustOrigin[origin]; exist {
@@ -129,6 +137,21 @@ func startServeAPI(port int, handler func(router *gin.Engine), onErr func(err er
 		},
 		MaxAge: 24 * time.Hour,
 	}))
+	router.Use(func(c *gin.Context) {
+		if !shouldCompress(c.Request) {
+			return
+		}
+		c.Header("Content-Encoding", "br")
+		c.Header("Vary", "Accept-Encoding")
+		brWriter := brotli.NewWriterV2(c.Writer, brotli.DefaultCompression)
+		x := &CompressMidle{c.Writer, brWriter, 0}
+		c.Writer = x
+		defer func() {
+			brWriter.Close()
+			c.Header("Content-Length", strconv.Itoa(x.Length))
+		}()
+		c.Next()
+	})
 	if gin.Mode() == gin.ReleaseMode {
 		router.SetTrustedProxies(nil)
 	}
@@ -166,4 +189,47 @@ func createDefaultUser() {
 func startMetricsHandler(port int) {
 	http.Handle("/metrics", promhttp.Handler())
 	http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
+}
+
+type CompressMidle struct {
+	gin.ResponseWriter
+	writer *matchfinder.Writer
+	Length int
+}
+
+func (g *CompressMidle) WriteString(s string) (int, error) {
+	g.Length += len(s)
+	return g.writer.Write([]byte(s))
+}
+
+func (g *CompressMidle) Write(data []byte) (int, error) {
+	g.Length += len(data)
+	return g.writer.Write(data)
+}
+
+func shouldCompress(req *http.Request) bool {
+	if !strings.Contains(req.Header.Get("Accept-Encoding"), "br") {
+		return false
+	}
+	if strings.Contains(req.URL.Path, "be/s3") {
+		return false
+	}
+	if strings.Contains(req.URL.Path, "be/data/storage") {
+		return false
+	}
+	if strings.Contains(req.URL.Path, "api/storage") {
+		return false
+	}
+
+	extension := filepath.Ext(req.URL.Path)
+	if len(extension) < 4 { // fast path
+		return true
+	}
+
+	switch extension {
+	case ".png", ".gif", ".jpeg", ".jpg", ".webp":
+		return false
+	default:
+		return true
+	}
 }

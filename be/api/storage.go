@@ -2,6 +2,7 @@ package api
 
 import (
 	"be/common"
+	"be/job"
 	"bytes"
 	"errors"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -37,6 +39,7 @@ var cachePreSign = make(map[string]*common.S3PreSign)
 type S3Storage struct{}
 
 func (h *S3Storage) Handler(c *gin.RouterGroup) {
+	c.GET("", h.StorageFile)
 	c.GET("/", h.StorageFile)
 	c.PUT("/", h.UploadStorageFile)
 }
@@ -50,6 +53,19 @@ func (h *S3Storage) StorageFile(c *gin.Context) {
 		return
 	}
 	key := bucket + name
+	if w, _ := strconv.Atoi(c.Query("w")); w > 0 {
+		keyW := fmt.Sprintf("%s_w%d", key, w)
+		image, exist := common.CacheDataPool.Get(keyW)
+		if exist {
+			header := image.Header
+			header["Cache-Control"] = "public, max-age=86400"
+			header["Expires"] = image.InvalidAt.Format(http.TimeFormat)
+			header["Last-Modified"] = image.CreateAt.Format(http.TimeFormat)
+			header["Content-Encoding"] = image.ContentEncoding
+			c.DataFromReader(http.StatusOK, int64(image.ContentLength), image.Mime, bytes.NewBuffer(image.Data), header)
+			return
+		}
+	}
 	v, exist := common.CacheDataPool.Get(key)
 	var preSign *common.S3PreSign
 	var err error
@@ -72,7 +88,7 @@ func (h *S3Storage) StorageFile(c *gin.Context) {
 			ContentLength: resp.ContentLength,
 			Mime:          resp.Header.Get("content-type"),
 			Header:        make(map[string]string),
-			InvalidAt:     time.Now().Add(24 * time.Hour),
+			InvalidAt:     time.Now().Add(30 * 24 * time.Hour),
 			CreateAt:      time.Now(),
 		}
 		for k, v := range resp.Header {
@@ -82,10 +98,15 @@ func (h *S3Storage) StorageFile(c *gin.Context) {
 			image.Header[k] = v[0]
 		}
 		image.Data, _ = io.ReadAll(resp.Body)
-		image.Compress()
 		common.CacheDataPool.Add(key, image)
 		v = image
 		exist = true
+		job.AddCompressImage(key, 0)
+		if w, _ := strconv.Atoi(c.Query("w")); w > 0 {
+			key = fmt.Sprintf("%s_w%d", key, w)
+			common.CacheDataPool.Add(key, image)
+			job.AddCompressImage(key, w)
+		}
 	}
 
 	if !exist {
@@ -94,7 +115,7 @@ func (h *S3Storage) StorageFile(c *gin.Context) {
 	}
 	image := v
 	header := image.Header
-	header["Cache-Control"] = "public, max-age=86400"
+	header["Cache-Control"] = "public, max-age=2592000"
 	header["Expires"] = image.InvalidAt.Format(http.TimeFormat)
 	header["Last-Modified"] = image.CreateAt.Format(http.TimeFormat)
 	header["Content-Encoding"] = image.ContentEncoding
@@ -183,12 +204,16 @@ func (h *S3Storage) UploadStorageFile(c *gin.Context) {
 }
 
 func (h *S3Storage) StorageListObject(c *gin.Context) {
-	offset := c.GetInt("offset")
-	limit := c.GetInt("limit")
-	bucket := c.GetString("bucket")
-	if limit <= 0 {
-		limit = 10
+	offset := 0
+	if v, _ := strconv.Atoi(c.Query("offset")); v > 0 {
+		offset = v
 	}
+	limit := 10
+	if v, _ := strconv.Atoi(c.Query("limit")); v > 0 {
+		limit = v
+	}
+	bucket := c.Query("bucket")
+
 	ml, err := common.GetS3ObjectsSync(bucket, offset, limit)
 	if err != nil {
 		zap.L().With(zap.Error(err)).Error("get list s3 object failed")
@@ -196,8 +221,8 @@ func (h *S3Storage) StorageListObject(c *gin.Context) {
 		return
 	}
 	for idx, v := range ml {
-		preSignGet, _ := common.DefaultS3Hepler.PreSign(http.MethodGet, v.Bucket, v.Name)
-		v.PresignUrl = preSignGet.Url
+		// preSignGet, _ := common.DefaultS3Hepler.PreSign(http.MethodGet, v.Bucket, v.Name)
+		v.PresignUrl = fmt.Sprintf("https://api.oneblock.vn/be/s3/?bucket=%s&name=%s", v.Bucket, v.Name)
 		ml[idx] = v
 	}
 	c.JSON(http.StatusOK, ml)

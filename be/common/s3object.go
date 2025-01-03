@@ -18,9 +18,9 @@ type S3ObjectSync struct {
 	gorm.Model
 	Name       string   `gorm:"index:idx_name_age,unique" json:"name,omitempty"`
 	Bucket     string   `gorm:"index:idx_name_age,unique" json:"bucket,omitempty"`
-	Source_1   SourceS3 `gorm:"index" json:"source_1,omitempty"`
-	Source_2   SourceS3 `gorm:"default(0);index" json:"source_2,omitempty"`
-	PresignUrl string   `gorm:"-" json:"presign_url,omitempty"`
+	Source_1   SourceS3 `gorm:"index" json:"source1,omitempty"`
+	Source_2   SourceS3 `gorm:"default(0);index" json:"source2,omitempty"`
+	PresignUrl string   `gorm:"-" json:"presignUrl,omitempty"`
 }
 
 func (s *S3ObjectSync) Insert() error {
