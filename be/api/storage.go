@@ -101,7 +101,6 @@ func (h *S3Storage) StorageFile(c *gin.Context) {
 		common.CacheDataPool.Add(key, image)
 		v = image
 		exist = true
-		job.AddCompressImage(key, 0)
 		if w, _ := strconv.Atoi(c.Query("w")); w > 0 {
 			key = fmt.Sprintf("%s_w%d", key, w)
 			common.CacheDataPool.Add(key, image)
@@ -113,6 +112,7 @@ func (h *S3Storage) StorageFile(c *gin.Context) {
 		c.Redirect(http.StatusFound, preSign.Url)
 		return
 	}
+
 	image := v
 	header := image.Header
 	header["Cache-Control"] = "public, max-age=2592000"

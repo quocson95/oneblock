@@ -21,6 +21,7 @@ type CacheData struct {
 	ContentEncoding string
 	CreateAt        time.Time
 	InvalidAt       time.Time
+	Resize          bool
 }
 
 func (c *CacheData) Compress() {
@@ -47,7 +48,7 @@ func (c *CacheData) CompressBroti() {
 }
 
 func (c *CacheData) IsCompress() bool {
-	return len(c.ContentEncoding) > 0
+	return len(c.ContentEncoding) > 0 || c.IsImage()
 }
 
 func (c *CacheData) IsImage() bool {

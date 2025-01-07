@@ -22,7 +22,6 @@ import (
 	"github.com/andybalholm/brotli/matchfinder"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/labstack/echo/v4"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	_ "go.uber.org/automaxprocs"
 	"go.uber.org/zap"
@@ -67,8 +66,8 @@ func main() {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	_ = ctx
-	go job.StartJobCrawl(ctx)
-	go job.StartJobCompressImage(ctx)
+	// go job.StartJobCrawl(ctx)
+	go job.StartJobResizeImage(ctx)
 
 	startServeAPI(port, func(router *gin.Engine) {
 		// defer pprof.Register(router)
@@ -124,7 +123,7 @@ func startServeAPI(port int, handler func(router *gin.Engine), onErr func(err er
 	router.Use(cors.New(cors.Config{
 		// AllowOrigins:     []string{"https://*on"},
 		AllowMethods:     []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodOptions, http.MethodDelete},
-		AllowHeaders:     []string{echo.HeaderContentType, echo.HeaderAccept, "user-agent", "referer", "Cookie", "Authorize"},
+		AllowHeaders:     []string{"Content-Type", "Accept", "user-agent", "referer", "Cookie", "Authorize"},
 		ExposeHeaders:    []string{"Content-Length", "Access-Control-Allow-Origin"},
 		AllowCredentials: true,
 		AllowOriginFunc: func(origin string) bool {

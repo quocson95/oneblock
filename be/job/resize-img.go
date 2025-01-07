@@ -15,24 +15,27 @@ import (
 	_ "golang.org/x/image/webp"
 )
 
-type CompressRequest struct {
+type ResizeRequest struct {
 	Key string
 	W   int
 }
 
-var compressImageQueue = make(chan *CompressRequest, 200)
+var queueResizeImage = make(chan *ResizeRequest, 200)
 
-func StartJobCompressImage(ctx context.Context) {
+func StartJobResizeImage(ctx context.Context) {
 	go func() {
 		for {
 			select {
 			case <-ctx.Done():
-				zap.L().Info("stop job compress image")
+				zap.L().Info("stop job resize image")
 				return
-			case req := <-compressImageQueue:
+			case req := <-queueResizeImage:
 				key := req.Key
 				v, exist := common.CacheDataPool.Get(key)
 				if !exist {
+					break
+				}
+				if v.Resize {
 					break
 				}
 				if req.W > 0 && v.IsImage() {
@@ -46,14 +49,11 @@ func StartJobCompressImage(ctx context.Context) {
 						zap.L().With(zap.String("key", key)).With(zap.Error(err)).Error("resize failed")
 					}
 				}
-				if v.IsCompress() {
-					break
-				}
-				t := time.Now()
-				v.Compress()
+
+				v.Resize = true
 				common.CacheDataPool.Add(key, v)
+				// zap.L().With(zap.String("key", key)).With(zap.Duration("cost", time.Since(t))).Info("compress done")
 				time.Sleep(500 * time.Millisecond)
-				zap.L().With(zap.String("key", key)).With(zap.Duration("cost", time.Since(t))).Info("compress done")
 			}
 		}
 	}()
@@ -62,13 +62,13 @@ func StartJobCompressImage(ctx context.Context) {
 
 func AddCompressImage(key string, w int) {
 	select {
-	case compressImageQueue <- &CompressRequest{
+	case queueResizeImage <- &ResizeRequest{
 		Key: key,
 		W:   w,
 	}:
-		zap.L().With(zap.String("key", key)).Info("add queue compress")
+		zap.L().With(zap.String("key", key)).Info("add resize compress")
 	default:
-		zap.L().With(zap.String("key", key)).Info("queue compress full")
+		zap.L().With(zap.String("key", key)).Info("queue resize full")
 	}
 }
 
@@ -82,7 +82,7 @@ func resizeImage(w int, data []byte) ([]byte, string, error) {
 	imgResize := &bytes.Buffer{}
 	if w < size.X {
 		ratio := float64(size.X) / float64(size.Y)
-		resized := transform.Resize(img, w, int(float64(w)/ratio), transform.Gaussian)
+		resized := transform.Resize(img, w, int(float64(w)/ratio), transform.Lanczos)
 		enc := png.Encode
 		enc(imgResize, resized)
 	} else {
@@ -90,7 +90,7 @@ func resizeImage(w int, data []byte) ([]byte, string, error) {
 		imgResize = bytes.NewBuffer(data)
 	}
 	imgWebp := &bytes.Buffer{}
-	err = webpbin.NewCWebP().Quality(80).Input(imgResize).Output(imgWebp).Run()
+	err = webpbin.NewCWebP().Quality(100).Input(imgResize).Output(imgWebp).Run()
 	if err != nil {
 		return nil, "", err
 	}

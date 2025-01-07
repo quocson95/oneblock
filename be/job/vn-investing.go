@@ -4,6 +4,7 @@ import (
 	"be/common"
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -40,8 +41,12 @@ func Crawl() ([]common.EconomicEvent, error) {
 		return nil, fmt.Errorf("get %s with status %d", url, resp.StatusCode)
 	}
 
+	return ParseCrawlInvestCal(resp.Body)
+}
+
+func ParseCrawlInvestCal(inp io.Reader) ([]common.EconomicEvent, error) {
 	// Parse the HTML
-	doc, err := goquery.NewDocumentFromReader(resp.Body)
+	doc, err := goquery.NewDocumentFromReader(inp)
 	if err != nil {
 		// log.Fatalf("Failed to parse HTML: %v", err)
 		return nil, err
@@ -81,7 +86,6 @@ func Crawl() ([]common.EconomicEvent, error) {
 			events = append(events, event)
 		}
 	})
-
 	return events, nil
 }
 
@@ -103,6 +107,12 @@ func JobCrawlInvestingCalendar() error {
 		zap.L().With(zap.Error(err)).Error("craw failed")
 		return err
 	}
+	InsertEventInvestCal(events)
+	return nil
+}
+
+func InsertEventInvestCal(events []common.EconomicEvent) {
+	var err error
 	for _, event := range events {
 		ics := common.ICS{
 			Uid:       common.QuickMd5([]byte(fmt.Sprintf("%s_%d", event.Actual, event.TimeUnix))),
@@ -119,7 +129,7 @@ func JobCrawlInvestingCalendar() error {
 		}
 		if err != nil && !strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
 			zap.L().With(zap.Error(err)).Error("insert new ics failed")
-			return nil
+			return
 		}
 	}
 	logEvent := common.CrawlLog{
@@ -129,7 +139,6 @@ func JobCrawlInvestingCalendar() error {
 	if err := logEvent.Insert(); err != nil {
 		zap.L().With(zap.Error(err)).Error("insert log craw failed")
 	}
-	return nil
 }
 func JobCrawAndImportEventInvestingCalendar(ctx context.Context) {
 	lastRunSucces := time.Time{}

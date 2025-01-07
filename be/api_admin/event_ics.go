@@ -2,6 +2,7 @@ package apiadmin
 
 import (
 	"be/common"
+	"be/job"
 	"net/http"
 	"strconv"
 	"time"
@@ -19,6 +20,7 @@ func (i *ICSAdminController) Handler(g gin.IRoutes) {
 	g.GET("/:id", i.Get)
 	g.POST("/", i.Add)
 	g.PUT("/", i.Edit)
+	g.POST("/update-cal-invest", i.UpdateCrawInvest)
 }
 
 func (i *ICSAdminController) List(c *gin.Context) {
@@ -93,4 +95,14 @@ func (i *ICSAdminController) Edit(c *gin.Context) {
 	}
 	icsDB.GetById(ics.ID)
 	c.JSON(http.StatusOK, icsDB)
+}
+
+func (i *ICSAdminController) UpdateCrawInvest(c *gin.Context) {
+	events, err := job.ParseCrawlInvestCal(c.Request.Body)
+	if err != nil {
+		zap.L().With(zap.Error(err)).Error("craw failed")
+		c.AbortWithStatus(http.StatusBadRequest)
+	}
+	job.InsertEventInvestCal(events)
+	c.JSON(http.StatusOK, events)
 }

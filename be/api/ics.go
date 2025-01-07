@@ -15,18 +15,42 @@ type ICSAPi struct{}
 func (i *ICSAPi) Handler(g gin.IRoutes) {
 	g.GET("", i.Calendar)
 	g.GET("/", i.Calendar)
+	g.GET("/register", i.CalendarRegister)
+	g.GET("/ios", i.Calendar)
+	g.GET("/cal", i.Calendar)
+}
+
+func (i *ICSAPi) CalendarRegister(c *gin.Context) {
+	userAgent := c.Request.UserAgent()
+	if isIOS(userAgent) {
+		c.Redirect(http.StatusMovedPermanently, "webcal://api.oneblock.vn/be/ics/ios")
+		return
+	}
+	c.Redirect(http.StatusMovedPermanently, "https://api.oneblock.vn/be/ics/cal")
 }
 
 func (i *ICSAPi) Calendar(c *gin.Context) {
-	start, end := common.GetWeekRange(time.Now())
-	start = start.Add(-7 * 24 * time.Hour)
-	ml, err := common.GetICS(start, end, 0, 1000)
-	if err != nil {
-		c.Abort()
-		return
+	cacheData, exist := common.CacheDataPool.Get("calendar")
+	var calData []byte
+	if exist && cacheData.InvalidAt.Before(time.Now()) {
+		calData = cacheData.Data
+	} else {
+		start, end := common.GetWeekRange(time.Now())
+		start = start.Add(-7 * 24 * time.Hour)
+		ml, err := common.GetICS(start, end, 0, 1000)
+		if err != nil {
+			c.Abort()
+			return
+		}
+		calData = []byte(generateICS(ml))
+		common.CacheDataPool.Add("calendar", common.CacheData{
+			Data:      calData,
+			Mime:      "text/calendar",
+			InvalidAt: time.Now().Add(10 * time.Minute),
+		})
 	}
 	c.Writer.Header().Set("Content-Disposition", "attachment; filename=calendar.ics")
-	c.Data(http.StatusOK, "text/calendar", []byte(generateICS(ml)))
+	c.Data(http.StatusOK, "text/calendar", calData)
 }
 
 func generateICS(ml []common.ICS) string {
@@ -39,6 +63,7 @@ func generateICS(ml []common.ICS) string {
 	builder.WriteString("BEGIN:VCALENDAR\n")
 	builder.WriteString("VERSION:2.0\n")
 	builder.WriteString("PRODID:-//Oneblock//NONSGML v1.0//EN\n")
+	builder.WriteString("X-WR-CALNAME:Oneblock Lịch Kinh Tế\n")
 	builder.WriteString("CALSCALE:GREGORIAN\n")
 	for _, event := range ml {
 		// Event details
@@ -61,4 +86,9 @@ func generateICS(ml []common.ICS) string {
 	// iCalendar footer
 	builder.WriteString("END:VCALENDAR\n")
 	return builder.String()
+}
+
+func isIOS(userAgent string) bool {
+	// Check for iOS-related terms in the User-Agent string
+	return strings.Contains(userAgent, "iPhone") || strings.Contains(userAgent, "iPad") || strings.Contains(userAgent, "iPod")
 }
