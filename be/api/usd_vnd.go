@@ -8,10 +8,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo/v4"
 )
 
-func USDVNDRate(c *gin.Context) {
+func USDVNDRate(c echo.Context) error {
 	usdVndRaw := common.UsdVnd{}
 	common.Load(common.USDVNDId, func(data []byte) error {
 		return json.Unmarshal(data, &usdVndRaw)
@@ -59,5 +59,5 @@ func USDVNDRate(c *gin.Context) {
 		result.BtcPrice = append(result.BtcPrice, btcPrice)
 	}
 
-	c.JSON(http.StatusOK, result)
+	return c.JSON(http.StatusOK, result)
 }

@@ -6,52 +6,53 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
 )
 
 type MdxController struct{}
 
-func (m *MdxController) Handler(g gin.IRoutes) {
+func (m *MdxController) Handler(g *echo.Group) {
 	g.GET("", m.List)
 	g.GET("/", m.List)
 	g.GET("/:id", m.Get)
 }
 
-func (m *MdxController) List(c *gin.Context) {
+func (m *MdxController) List(c echo.Context) error {
 	limit := 100
 	offset := 0
-	if v, _ := strconv.Atoi(c.Query("limit")); v > 0 {
+	if v, _ := strconv.Atoi(c.QueryParam("limit")); v > 0 {
 		limit = v
 	}
-	if v, _ := strconv.Atoi(c.Query("offset")); v > 0 {
+	if v, _ := strconv.Atoi(c.QueryParam("offset")); v > 0 {
 		offset = v
 	}
-	typeDocStr := c.DefaultQuery("type_doc", "1")
+	typeDocStr := c.QueryParam("type_doc")
+	if len(typeDocStr) == 0 {
+		typeDocStr = "1"
+	}
 	typeDoc, _ := strconv.Atoi(typeDocStr)
 	ml, _ := common.GetListMdx(typeDoc, offset, limit)
-	c.JSON(http.StatusOK, ml)
+	return c.JSON(http.StatusOK, ml)
 }
 
-func (m *MdxController) Get(c *gin.Context) {
+func (m *MdxController) Get(c echo.Context) error {
 	id := c.Param("id")
 	v := common.Mdx{}
 	idInt, _ := strconv.Atoi(id)
 	err := v.GetById(common.GetDB(), idInt)
 	if err != nil {
 		zap.L().With(zap.Int("id", idInt)).With(zap.Error(err)).Error("get mdx by id failed")
-		c.AbortWithStatus(http.StatusBadRequest)
-		return
+		return c.NoContent(http.StatusBadRequest)
 	}
 
 	preSign, err := common.DefaultS3Hepler.PreSign(http.MethodGet, common.DefaultBucketMdx.String(), v.Name)
 	if err != nil {
 		zap.L().With(zap.String("id", id)).With(zap.String("name", v.Name)).With(zap.Error(err)).Error("presign failed")
-		c.Abort()
-		return
+		return c.NoContent(http.StatusOK)
 	}
 	v.Url = preSign.Url
-	if len(c.Query("loadContent")) > 0 {
+	if len(c.QueryParam("loadContent")) > 0 {
 		resp, cleanup, err := common.QuickGetHttp(preSign.Method, preSign.Url, nil)
 		defer cleanup()
 		if err == nil {
@@ -59,6 +60,6 @@ func (m *MdxController) Get(c *gin.Context) {
 			v.Content = string(content)
 		}
 	}
-	c.JSON(http.StatusOK, v)
+	return c.JSON(http.StatusOK, v)
 
 }

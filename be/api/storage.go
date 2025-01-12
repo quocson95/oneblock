@@ -13,8 +13,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/labstack/echo/v4"
 	"github.com/nickalie/go-webpbin"
 	"go.uber.org/zap"
 )
@@ -38,26 +38,26 @@ type S3Storage struct{}
 
 var wlBucket = map[string]struct{}{"cms-images": {}, common.DefaultBucketMdx.String(): {}}
 
-func (h *S3Storage) Handler(c *gin.RouterGroup) {
+func (h *S3Storage) Handler(c *echo.Group) {
 	c.GET("", h.StorageFile)
 	c.GET("/", h.StorageFile)
 	c.PUT("/", h.UploadStorageFile)
 }
 
-func (h *S3Storage) StorageFile(c *gin.Context) {
-	bucket := c.Query("bucket")
-	name := c.Query("name")
-	noCache := c.Query("noCache") == "true"
+func (h *S3Storage) StorageFile(c echo.Context) error {
+	bucket := c.QueryParam("bucket")
+	name := c.QueryParam("name")
+	noCache := c.QueryParam("noCache") == "true"
 	if _, exsit := wlBucket[bucket]; !exsit {
-		c.AbortWithStatus(http.StatusOK)
-		return
+		return echo.NewHTTPError(http.StatusOK)
+
 	}
 	if len(name) == 0 {
-		h.StorageListObject(c)
-		return
+		return h.StorageListObject(c)
+
 	}
 	key := bucket + name
-	if w, _ := strconv.Atoi(c.Query("w")); w > 0 {
+	if w, _ := strconv.Atoi(c.QueryParam("w")); w > 0 {
 		keyW := fmt.Sprintf("%s_w%d", key, w)
 		image, exist := common.CacheDataPool.Get(keyW)
 		if exist {
@@ -66,8 +66,13 @@ func (h *S3Storage) StorageFile(c *gin.Context) {
 			header["Expires"] = image.InvalidAt.Format(http.TimeFormat)
 			header["Last-Modified"] = image.CreateAt.Format(http.TimeFormat)
 			header["Content-Encoding"] = image.ContentEncoding
-			c.DataFromReader(http.StatusOK, int64(image.ContentLength), image.Mime, bytes.NewBuffer(image.Data), header)
-			return
+			resp := c.Response()
+			for k, v := range header {
+				resp.Header().Set(k, v)
+			}
+			c.SetResponse(resp)
+			return c.Blob(http.StatusOK, image.Mime, image.Data)
+
 		}
 	}
 	v, exist := common.CacheDataPool.Get(key)
@@ -78,15 +83,15 @@ func (h *S3Storage) StorageFile(c *gin.Context) {
 		preSign, err = common.DefaultS3Hepler.PreSign(http.MethodGet, bucket, name)
 		if err != nil {
 			zap.L().With(zap.Error(err)).With(zap.String("bucket", bucket)).With(zap.String("name", name)).Error("presign failed")
-			c.AbortWithStatusJSON(http.StatusBadRequest, "presign failed")
-			return
+			return echo.NewHTTPError(http.StatusBadRequest, "presign failed")
+
 		}
 		resp, cleanup, err := common.QuickGetHttp(http.MethodGet, preSign.Url, nil)
 		defer cleanup()
 		if err != nil {
 			zap.L().With(zap.Error(err)).With(zap.String("bucket", bucket)).With(zap.String("name", name)).Error("get content presign failed")
-			c.AbortWithStatusJSON(http.StatusBadRequest, "presign failed")
-			return
+			return echo.NewHTTPError(http.StatusBadRequest, "presign failed")
+
 		}
 		image := common.CacheData{
 			ContentLength: resp.ContentLength,
@@ -105,7 +110,7 @@ func (h *S3Storage) StorageFile(c *gin.Context) {
 		common.CacheDataPool.Add(key, image)
 		v = image
 		exist = true
-		if w, _ := strconv.Atoi(c.Query("w")); w > 0 {
+		if w, _ := strconv.Atoi(c.QueryParam("w")); w > 0 {
 			key = fmt.Sprintf("%s_w%d", key, w)
 			common.CacheDataPool.Add(key, image)
 			job.AddCompressImage(key, w)
@@ -113,8 +118,7 @@ func (h *S3Storage) StorageFile(c *gin.Context) {
 	}
 
 	if !exist {
-		c.Redirect(http.StatusFound, preSign.Url)
-		return
+		return c.Redirect(http.StatusFound, preSign.Url)
 	}
 
 	image := v
@@ -123,22 +127,26 @@ func (h *S3Storage) StorageFile(c *gin.Context) {
 	header["Expires"] = image.InvalidAt.Format(http.TimeFormat)
 	header["Last-Modified"] = image.CreateAt.Format(http.TimeFormat)
 	header["Content-Encoding"] = image.ContentEncoding
-	c.DataFromReader(http.StatusOK, int64(image.ContentLength), image.Mime, bytes.NewBuffer(image.Data), header)
+	// c.DataFromReader(http.StatusOK, int64(image.ContentLength), image.Mime, bytes.NewBuffer(image.Data), header)
+	resp := c.Response()
+	for k, v := range header {
+		resp.Header().Set(k, v)
+	}
+	c.SetResponse(resp)
+	return c.Blob(http.StatusOK, image.Mime, image.Data)
 }
 
-func (h *S3Storage) UploadStorageFile(c *gin.Context) {
-	bucket := c.Query("bucket")
-	name := c.Query("name")
+func (h *S3Storage) UploadStorageFile(c echo.Context) error {
+	bucket := c.QueryParam("bucket")
+	name := c.QueryParam("name")
 	if len(bucket) == 0 {
 		zap.L().Error("bucket missing")
-		c.AbortWithStatus(http.StatusOK)
-		return
+		return c.NoContent(http.StatusOK)
 	}
-	body, err := io.ReadAll(c.Request.Body)
+	body, err := io.ReadAll(c.Request().Body)
 	if err != nil {
 		zap.L().Error("read body failed")
-		c.JSON(http.StatusOK, common.Mdx{Err: errors.New("read body failed")})
-		return
+		return c.JSON(http.StatusOK, common.Mdx{Err: errors.New("read body failed")})
 	}
 	bodyType := http.DetectContentType(body)
 	originBodyLen := len(body)
@@ -159,16 +167,14 @@ func (h *S3Storage) UploadStorageFile(c *gin.Context) {
 	preSign, err := common.DefaultS3Hepler.PreSign(http.MethodPut, bucket, name)
 	if err != nil {
 		zap.L().With(zap.Error(err)).Error("presign put failed")
-		c.JSON(http.StatusOK, common.Mdx{Err: errors.New("presign put failed")})
-		return
+		return c.JSON(http.StatusOK, common.Mdx{Err: errors.New("presign put failed")})
 	}
 	client, err := http.NewRequest(http.MethodPut, preSign.Url, bytes.NewReader(body))
 	if err != nil {
 		zap.L().With(zap.Error(err)).Error("init put failed")
-		c.JSON(http.StatusOK, common.Mdx{Err: errors.New("init put failed")})
-		return
+		return c.JSON(http.StatusOK, common.Mdx{Err: errors.New("init put failed")})
 	}
-	client.Header.Set("Content-Type", c.ContentType())
+	client.Header.Set("Content-Type", c.Request().Header.Get("Content-Type"))
 	if len(client.Header.Get("Content-Type")) == 0 {
 		client.Header.Set("Content-Type", http.DetectContentType(body))
 	}
@@ -176,15 +182,13 @@ func (h *S3Storage) UploadStorageFile(c *gin.Context) {
 	resp, err := common.DefaultHttpClient.Do(client)
 	if err != nil {
 		zap.L().With(zap.String("name", name)).With(zap.String("bucket", bucket)).With(zap.Error(err)).Error("upload failed")
-		c.JSON(http.StatusBadRequest, &common.S3StorageResp{Err: errors.New("upload failed")})
-		return
+		return c.JSON(http.StatusBadRequest, &common.S3StorageResp{Err: errors.New("upload failed")})
 	}
 	if resp.StatusCode != http.StatusOK {
 		bodyErr, _ := io.ReadAll(resp.Body)
 		resp.Body.Close()
 		zap.L().With(zap.String("name", name)).With(zap.String("bucket", bucket)).With(zap.ByteString("body", bodyErr)).Error("upload failed")
-		c.JSON(http.StatusBadRequest, &common.S3StorageResp{Err: errors.New("upload failed")})
-		return
+		return c.JSON(http.StatusBadRequest, &common.S3StorageResp{Err: errors.New("upload failed")})
 	}
 	key := bucket + name
 	common.CacheDataPool.Remove(key)
@@ -196,38 +200,37 @@ func (h *S3Storage) UploadStorageFile(c *gin.Context) {
 	if err := s3Sync.Insert(); err != nil {
 		zap.L().With(zap.Error(err)).Error("save s3 sync object failed")
 	}
-	getPreSign, _ := url.Parse(fmt.Sprintf("https://%s/be/s3", c.Request.Host))
+	getPreSign, _ := url.Parse(fmt.Sprintf("https://%s/be/s3", c.Request().Host))
 	getPreSign.RawQuery = ""
 	query := url.Values{}
 	query.Add("name", name)
 	query.Add("bucket", bucket)
 	getPreSign.RawQuery = query.Encode()
-	c.JSON(http.StatusOK, &common.S3StorageResp{
+	return c.JSON(http.StatusOK, &common.S3StorageResp{
 		Url: getPreSign.String(),
 	})
 }
 
-func (h *S3Storage) StorageListObject(c *gin.Context) {
+func (h *S3Storage) StorageListObject(c echo.Context) error {
 	offset := 0
-	if v, _ := strconv.Atoi(c.Query("offset")); v > 0 {
+	if v, _ := strconv.Atoi(c.QueryParam("offset")); v > 0 {
 		offset = v
 	}
 	limit := 10
-	if v, _ := strconv.Atoi(c.Query("limit")); v > 0 {
+	if v, _ := strconv.Atoi(c.QueryParam("limit")); v > 0 {
 		limit = v
 	}
-	bucket := c.Query("bucket")
+	bucket := c.QueryParam("bucket")
 
 	ml, err := common.GetS3ObjectsSync(bucket, offset, limit)
 	if err != nil {
 		zap.L().With(zap.Error(err)).Error("get list s3 object failed")
-		c.AbortWithStatus(http.StatusBadRequest)
-		return
+		return c.NoContent(http.StatusBadRequest)
 	}
 	for idx, v := range ml {
 		// preSignGet, _ := common.DefaultS3Hepler.PreSign(http.MethodGet, v.Bucket, v.Name)
 		v.PresignUrl = fmt.Sprintf("https://api.oneblock.vn/be/s3/?bucket=%s&name=%s", v.Bucket, v.Name)
 		ml[idx] = v
 	}
-	c.JSON(http.StatusOK, ml)
+	return c.JSON(http.StatusOK, ml)
 }

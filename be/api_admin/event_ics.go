@@ -7,13 +7,13 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
 )
 
 type ICSAdminController struct{}
 
-func (i *ICSAdminController) Handler(g gin.IRoutes) {
+func (i *ICSAdminController) Handler(g *echo.Group) {
 	g.GET("", i.List)
 	g.GET("/", i.List)
 	g.GET("/log", i.ListLogCraw)
@@ -23,86 +23,84 @@ func (i *ICSAdminController) Handler(g gin.IRoutes) {
 	g.POST("/update-cal-invest", i.UpdateCrawInvest)
 }
 
-func (i *ICSAdminController) List(c *gin.Context) {
+func (i *ICSAdminController) List(c echo.Context) error {
 	start, end := common.GetWeekRange(time.Now())
 	ml, err := common.GetICS(start, end, 0, 1000)
 	if err != nil {
 		zap.L().With(zap.Error(err)).Error("get list ics failed")
-		c.AbortWithStatus(http.StatusBadRequest)
-		return
+		return c.NoContent(http.StatusBadRequest)
+
 	}
-	c.JSON(http.StatusOK, ml)
+	return c.JSON(http.StatusOK, ml)
 }
 
-func (i *ICSAdminController) Get(c *gin.Context) {
+func (i *ICSAdminController) Get(c echo.Context) error {
 	id := c.Param("id")
 	idInt, _ := strconv.Atoi(id)
 	if idInt <= 0 {
-		c.Abort()
-		return
+		return c.NoContent(http.StatusOK)
+
 	}
 	ics := &common.ICS{}
 	err := ics.GetById(uint(idInt))
 	if err != nil {
 		zap.L().With(zap.Int("id", idInt)).With(zap.Error(err)).Error("get ics failed")
-		c.AbortWithStatus(http.StatusBadRequest)
-		return
+		return c.NoContent(http.StatusBadRequest)
+
 	}
-	c.JSON(http.StatusOK, ics)
+	return c.JSON(http.StatusOK, ics)
 }
 
-func (i *ICSAdminController) ListLogCraw(c *gin.Context) {
+func (i *ICSAdminController) ListLogCraw(c echo.Context) error {
 	ml, err := common.GetCrawlLogs(0, 1000)
 	if err != nil {
 		zap.L().With(zap.Error(err)).Error("get log craw failed")
-		c.AbortWithStatus(http.StatusBadRequest)
-		return
+		return c.NoContent(http.StatusBadRequest)
+
 	}
-	c.JSON(http.StatusOK, ml)
+	return c.JSON(http.StatusOK, ml)
 }
 
-func (i *ICSAdminController) Add(c *gin.Context) {
+func (i *ICSAdminController) Add(c echo.Context) error {
 	ics := &common.ICS{}
-	err := c.ShouldBindBodyWithJSON(ics)
+	err := c.Bind(ics)
 	if err != nil {
 		zap.L().With(zap.Error(err)).Error("bind body failed")
-		c.AbortWithStatus(http.StatusBadRequest)
-		return
+		return c.NoContent(http.StatusBadRequest)
+
 	}
 	ics.Insert()
+	return c.NoContent(http.StatusOK)
 }
 
-func (i *ICSAdminController) Edit(c *gin.Context) {
+func (i *ICSAdminController) Edit(c echo.Context) error {
 	ics := &common.ICS{}
-	err := c.ShouldBindBodyWithJSON(ics)
+	err := c.Bind(ics)
 	if err != nil {
 		zap.L().With(zap.Error(err)).Error("bind body failed")
-		c.AbortWithStatus(http.StatusBadRequest)
-		return
+		return c.NoContent(http.StatusBadRequest)
 	}
 	icsDB := common.ICS{}
 	err = icsDB.GetById(ics.ID)
 	if err != nil {
 		zap.L().With(zap.Uint("id", ics.ID)).With(zap.Error(err)).Error("patch ics failed")
-		c.AbortWithStatus(http.StatusBadRequest)
-		return
+		return c.NoContent(http.StatusBadRequest)
 	}
 	err = icsDB.Updates(map[string]interface{}{"start_unix": ics.StartUnix, "end_unix": ics.EndUnix, "name": ics.Name, "desp": ics.Desp})
 	if err != nil {
 		zap.L().With(zap.Uint("id", ics.ID)).With(zap.Error(err)).Error("patch ics failed")
-		c.AbortWithStatus(http.StatusBadRequest)
-		return
+		return c.NoContent(http.StatusBadRequest)
 	}
 	icsDB.GetById(ics.ID)
-	c.JSON(http.StatusOK, icsDB)
+	return c.JSON(http.StatusOK, icsDB)
 }
 
-func (i *ICSAdminController) UpdateCrawInvest(c *gin.Context) {
-	events, err := job.ParseCrawlInvestCal(c.Request.Body)
+func (i *ICSAdminController) UpdateCrawInvest(c echo.Context) error {
+	events, err := job.ParseCrawlInvestCal(c.Request().Body)
 	if err != nil {
 		zap.L().With(zap.Error(err)).Error("craw failed")
-		c.AbortWithStatus(http.StatusBadRequest)
+		return c.NoContent(http.StatusBadRequest)
 	}
 	job.InsertEventInvestCal(events)
-	c.JSON(http.StatusOK, events)
+	return c.JSON(http.StatusOK, events)
 }

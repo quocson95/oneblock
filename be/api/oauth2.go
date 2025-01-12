@@ -11,7 +11,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -40,51 +40,51 @@ func NewOath2Api(googleCfg config.GoogleConsole) *Oauth2Api {
 	return o
 }
 
-func (o *Oauth2Api) Handler(r *gin.RouterGroup) {
+func (o *Oauth2Api) Handler(r *echo.Group) {
 	r.GET("/google_callback", o.GooleOauth2Callback)
 	r.GET("/google_signin", o.GoogleSignIn)
 	r.POST("/login", o.Login)
 
 }
 
-func (o *Oauth2Api) GoogleSignIn(c *gin.Context) {
+func (o *Oauth2Api) GoogleSignIn(c echo.Context) error {
 	urlGoogleLogin := fmt.Sprintf(`https://accounts.google.com/o/oauth2/v2/auth?scope=openid email profile&access_type=offline&include_granted_scopes=true&response_type=code&state=%s&redirect_uri=%s&client_id=%s`,
 		o.oauth2State, o.callbackSSo, o.oauth2Config.ClientID)
-	c.Redirect(http.StatusFound, urlGoogleLogin)
+	return c.Redirect(http.StatusFound, urlGoogleLogin)
 }
 
-func (o *Oauth2Api) GooleOauth2Callback(c *gin.Context) {
-	state := c.DefaultQuery("state", "")
+func (o *Oauth2Api) GooleOauth2Callback(c echo.Context) error {
+	state := c.QueryParam("state")
 	if state != o.oauth2State {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid state"})
-		return
+		// return c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid state"})
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid state")
 	}
 
-	code := c.DefaultQuery("code", "")
+	code := c.QueryParam("code")
 	if code == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing code"})
-		return
+		// return c.JSON(http.StatusBadRequest, gin.H{"error": "Missing code"})
+		return echo.NewHTTPError(http.StatusBadRequest, "Missing code")
 	}
 
 	token, err := o.oauth2Config.Exchange(context.Background(), code)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
+		// return c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
 	client := o.oauth2Config.Client(context.Background(), token)
 	resp, err := client.Get("https://www.googleapis.com/oauth2/v2/userinfo")
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
+		// return c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 	defer resp.Body.Close()
 
 	// Process user info
 	var userInfo map[string]interface{}
 	if err := json.NewDecoder(resp.Body).Decode(&userInfo); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
+		// return c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 	email := userInfo["email"].(string)
 	user := &common.User{}
@@ -94,27 +94,25 @@ func (o *Oauth2Api) GooleOauth2Callback(c *gin.Context) {
 	if err != nil {
 		zap.L().With(zap.Error(err)).With(zap.String("email", email)).Error("find user failed")
 		// c.AbortWithError(http.StatusBadRequest, errors.New("user-not-found"))
-		c.Redirect(http.StatusFound, redirectUrl)
-		return
+		return c.Redirect(http.StatusFound, redirectUrl)
 	}
 	user.Update(map[string]interface{}{"last_login": time.Now()})
 	tokenResp, err := security.CreateToken(user)
 	if err != nil {
 		zap.L().With(zap.String("email", user.Email)).With(zap.Error(err)).Error("create token failed")
 		// c.AbortWithError(http.StatusBadRequest, errors.New("create token failed"))
-		c.Redirect(http.StatusFound, redirectUrl)
-		return
+		return c.Redirect(http.StatusFound, redirectUrl)
 	}
 	zap.L().With(zap.String("user", user.Email)).Info("redirect user ok")
 	redirectUrl = fmt.Sprintf("%s?id=%s&errCode=%d&errStr=%s", config.GetConfig().GoogleConsole.RedirectURI, tokenResp.Token, 0, "")
 	// c.SetCookie("token", tokenResp.Token, 86400, "", "https://editor.oneblock.vn", false, false)
-	c.Redirect(http.StatusFound, redirectUrl)
+	return c.Redirect(http.StatusFound, redirectUrl)
 	// c.JSON(http.StatusOK, tokenResp)
 }
 
-func (o *Oauth2Api) Login(c *gin.Context) {
+func (o *Oauth2Api) Login(c echo.Context) error {
 	tokenResp := security.TokenResponse{}
-	data, _ := io.ReadAll(c.Request.Body)
+	data, _ := io.ReadAll(c.Request().Body)
 	tokenResp.Token = string(data)
-	c.JSON(http.StatusOK, tokenResp)
+	return c.JSON(http.StatusOK, tokenResp)
 }

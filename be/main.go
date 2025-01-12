@@ -11,21 +11,18 @@ import (
 	"be/sp500"
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
-	"path/filepath"
-	"strconv"
-	"strings"
+	"os"
 
-	"time"
-
-	"github.com/andybalholm/brotli"
-	"github.com/andybalholm/brotli/matchfinder"
-	"github.com/gin-contrib/cors"
-	"github.com/gin-gonic/gin"
+	echojwt "github.com/labstack/echo-jwt/v4"
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	_ "go.uber.org/automaxprocs"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"golang.org/x/time/rate"
 	"gorm.io/gorm"
 )
 
@@ -69,41 +66,67 @@ func main() {
 	job.JobCrawlInvestingCalendar()
 	go job.StartJobCrawl(ctx)
 	go job.StartJobResizeImage(ctx)
+	startEchoServeAPI(port, func(router *echo.Echo) {
+		beRouter := router.Group("/be")
+		{
+			staticRouter := beRouter.Group("/static")
+			staticRouter.Static("", "static")
+			staticRouter.Static("/", "static")
+		}
+		beRouter.Static("/chart", "chart")
+		{
+			dataRouter := beRouter.Group("/data")
+			dataRouter.GET("/btc_gold_raw", api.BtcGold)
+			dataRouter.GET("/m1", api.MoneySupplyM1)
+			dataRouter.GET("/m2", api.MoneySupplyM2)
+			dataRouter.GET("/money_supply", api.MoneySupplyAgress)
+			dataRouter.GET("/btc_gold", api.BtcGoldAgressApi)
+			dataRouter.GET("/sp500", sp500.Sp500)
+			dataRouter.GET("/funding_market_core", api.FundingMarketCore)
+			dataRouter.GET("/btc_holder", api.BtcHolder)
+			dataRouter.GET("/btc_eth_static", api.BtcEthStatic)
 
-	startServeAPI(port, func(router *gin.Engine) {
-		// defer pprof.Register(router)
-		router.Static("/be/static", "static")
+			new(api.S3Storage).Handler(router.Group("/storage"))
+			new(api.S3Storage).Handler(router.Group("/api/storage"))
+			new(api.S3Storage).Handler(router.Group("/be/s3"))
 
-		router.Static("/be/chart", "chart")
-		router.GET("/be/data/btc_gold_raw", api.BtcGold)
-		router.GET("/be/data/m1", api.MoneySupplyM1)
-		router.GET("/be/data/m2", api.MoneySupplyM2)
-		router.GET("/be/data/money_supply", api.MoneySupplyAgress)
-		router.GET("/be/data/btc_gold", api.BtcGoldAgressApi)
-		router.GET("/be/data/sp500", sp500.Sp500)
+			dataRouter.GET("/eth_gas_history", api.EthGasHistory)
+			router.GET("/usd_vnd", api.USDVNDRate)
 
-		router.GET("/be/data/funding_market_core", api.FundingMarketCore)
-		router.GET("/be/data/btc_holder", api.BtcHolder)
+		}
+		// router.GET("/be/data/btc_gold_raw", api.BtcGold)
+		// router.GET("/be/data/m1", api.MoneySupplyM1)
+		// router.GET("/be/data/m2", api.MoneySupplyM2)
+		// router.GET("/be/data/money_supply", api.MoneySupplyAgress)
+		// router.GET("/be/data/btc_gold", api.BtcGoldAgressApi)
+		// router.GET("/be/data/sp500", sp500.Sp500)
 
-		router.GET("/be/data/btc_eth_static", api.BtcEthStatic)
+		// router.GET("/be/data/funding_market_core", api.FundingMarketCore)
+		// router.GET("/be/data/btc_holder", api.BtcHolder)
+
+		// router.GET("/be/data/btc_eth_static", api.BtcEthStatic)
 		// router.GET("/be/data/storage", api.StorageFile)
 		// router.GET("/api/storage", api.StorageFile)
 		// router.GET("/api/storage", )
-		new(api.S3Storage).Handler(router.Group("/be/data/storage"))
-		new(api.S3Storage).Handler(router.Group("/api/storage"))
-		new(api.S3Storage).Handler(router.Group("/be/s3"))
+		// new(api.S3Storage).Handler(router.Group("/be/data/storage"))
 
-		router.GET("/be/data/eth_gas_history", api.EthGasHistory)
-		router.GET("/be/data/usd_vnd", api.USDVNDRate)
-		new(api.MdxController).Handler(router.Group("/be/mdx"))
-		new(api.AccountApi).Handler(router.Group("/be/account"))
-		api.NewOath2Api(config.GetConfig().GoogleConsole).Handler(router.Group("/be/auth"))
-		new(api.ICSAPi).Handler(router.Group("/be/ics"))
+		new(api.MdxController).Handler(beRouter.Group("/mdx"))
+		new(api.AccountApi).Handler(beRouter.Group("/account"))
+		api.NewOath2Api(config.GetConfig().GoogleConsole).Handler(beRouter.Group("/auth"))
+		new(api.ICSAPi).Handler(beRouter.Group("/ics"))
 
 		//auth
-		new(apiadmin.MdxAdminController).Handler(router.Group("/be/admin/mdx").Use(security.TokenAuthMiddleware(database.DB)))
-		new(apiadmin.ICSAdminController).Handler(router.Group("/be/admin/ics").Use(security.TokenAuthMiddleware(database.DB)))
-
+		{
+			adminRouter := beRouter.Group("/admin")
+			adminRouter.Use(echojwt.WithConfig(echojwt.Config{
+				// ...
+				SigningKey:     []byte(security.SecretJwtAuth),
+				SuccessHandler: security.SuccessEchoAuthHandler(database.DB),
+				// ...
+			}))
+			new(apiadmin.MdxAdminController).Handler(adminRouter.Group("/mdx"))
+			new(apiadmin.ICSAdminController).Handler(adminRouter.Group("/ics"))
+		}
 	}, func(err error) {
 		// e.Logger.Fatal(e.Start(fmt.Sprintf(":%d", port)))
 		zap.L().With(zap.Int("port", port)).With(zap.Error(err)).Error("startServeAPI failed")
@@ -114,50 +137,129 @@ func main() {
 		})
 }
 
-func startServeAPI(port int, handler func(router *gin.Engine), onErr func(err error), onDone func()) {
+// func startServeAPI(port int, handler func(router *gin.Engine), onErr func(err error), onDone func()) {
+// 	trustOrigin := make(map[string]struct{})
+// 	for _, s := range config.GetConfig().TrustOrigin {
+// 		trustOrigin[s] = struct{}{}
+// 	}
+// 	zap.L().With(zap.Strings("origins", config.GetConfig().TrustOrigin)).Info("trust origin")
+// 	router := gin.Default()
+// 	router.Use(cors.New(cors.Config{
+// 		// AllowOrigins:     []string{"https://*on"},
+// 		AllowMethods:     []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodOptions, http.MethodDelete},
+// 		AllowHeaders:     []string{"Content-Type", "Accept", "user-agent", "referer", "Cookie", "Authorize"},
+// 		ExposeHeaders:    []string{"Content-Length", "Access-Control-Allow-Origin"},
+// 		AllowCredentials: true,
+// 		AllowOriginFunc: func(origin string) bool {
+// 			if _, exist := trustOrigin[origin]; exist {
+// 				return true
+// 			}
+// 			// return exist
+// 			zap.L().With(zap.String("origin", origin)).Error("reject origin")
+// 			return false
+// 		},
+// 		MaxAge: 24 * time.Hour,
+// 	}))
+// 	router.Use(func(c *gin.Context) {
+// 		if !shouldCompress(c.Request) {
+// 			return
+// 		}
+// 		c.Header("Content-Encoding", "br")
+// 		c.Header("Vary", "Accept-Encoding")
+// 		brWriter := brotli.NewWriterV2(c.Writer, brotli.DefaultCompression)
+// 		x := &CompressMidle{c.Writer, brWriter, 0}
+// 		c.Writer = x
+// 		defer func() {
+// 			brWriter.Close()
+// 			c.Header("Content-Length", strconv.Itoa(x.Length))
+// 		}()
+// 		c.Next()
+// 	})
+// 	if gin.Mode() == gin.ReleaseMode {
+// 		router.SetTrustedProxies(nil)
+// 	}
+// 	handler(router)
+// 	zap.L().With(zap.Int("port", port)).Info("start server")
+// 	err := router.Run(fmt.Sprintf(":%d", port))
+// 	if err != nil && onErr != nil {
+// 		onErr(err)
+// 		return
+// 	}
+// 	onDone()
+// }
+
+func startEchoServeAPI(port int, handler func(router *echo.Echo), onErr func(err error), onDone func()) {
 	trustOrigin := make(map[string]struct{})
 	for _, s := range config.GetConfig().TrustOrigin {
 		trustOrigin[s] = struct{}{}
 	}
 	zap.L().With(zap.Strings("origins", config.GetConfig().TrustOrigin)).Info("trust origin")
-	router := gin.Default()
-	router.Use(cors.New(cors.Config{
-		// AllowOrigins:     []string{"https://*on"},
-		AllowMethods:     []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodOptions, http.MethodDelete},
-		AllowHeaders:     []string{"Content-Type", "Accept", "user-agent", "referer", "Cookie", "Authorize"},
-		ExposeHeaders:    []string{"Content-Length", "Access-Control-Allow-Origin"},
-		AllowCredentials: true,
-		AllowOriginFunc: func(origin string) bool {
+	router := echo.New()
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	router.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
+		LogStatus:   true,
+		LogURI:      true,
+		LogError:    true,
+		LogLatency:  true,
+		HandleError: true, // forwards error to the global error handler, so it can decide appropriate status code
+		LogValuesFunc: func(c echo.Context, v middleware.RequestLoggerValues) error {
+			if v.Error == nil {
+				logger.LogAttrs(context.Background(), slog.LevelInfo,
+					"REQUEST",
+					slog.String("latency", v.Latency.String()),
+					slog.String("uri", v.URI),
+					slog.Int("status", v.Status),
+				)
+			} else {
+				logger.LogAttrs(context.Background(), slog.LevelError, "REQUEST_ERROR",
+					slog.String("latency", v.Latency.String()),
+					slog.String("uri", v.URI),
+					slog.Int("status", v.Status),
+					slog.String("err", v.Error.Error()),
+				)
+			}
+			return nil
+		},
+	}))
+	router.Use(middleware.RateLimiter(middleware.NewRateLimiterMemoryStore(rate.Limit(20))))
+	router.Use(middleware.Recover())
+	router.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		// AllowOrigins: []string{"https://labstack.com", "https://labstack.net"},
+		AllowMethods:  []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodOptions, http.MethodDelete},
+		AllowHeaders:  []string{"Content-Type", "Accept", "user-agent", "referer", "Cookie", "Authorize"},
+		ExposeHeaders: []string{"Content-Length", "Access-Control-Allow-Origin"},
+		AllowOriginFunc: func(origin string) (bool, error) {
 			if _, exist := trustOrigin[origin]; exist {
-				return true
+				return true, nil
 			}
 			// return exist
 			zap.L().With(zap.String("origin", origin)).Error("reject origin")
-			return false
+			return false, nil
 		},
-		MaxAge: 24 * time.Hour,
 	}))
-	router.Use(func(c *gin.Context) {
-		if !shouldCompress(c.Request) {
-			return
-		}
-		c.Header("Content-Encoding", "br")
-		c.Header("Vary", "Accept-Encoding")
-		brWriter := brotli.NewWriterV2(c.Writer, brotli.DefaultCompression)
-		x := &CompressMidle{c.Writer, brWriter, 0}
-		c.Writer = x
-		defer func() {
-			brWriter.Close()
-			c.Header("Content-Length", strconv.Itoa(x.Length))
-		}()
-		c.Next()
-	})
-	if gin.Mode() == gin.ReleaseMode {
-		router.SetTrustedProxies(nil)
-	}
+
+	// router.Use(func(c *gin.Context) {
+	// 	if !shouldCompress(c.Request) {
+	// 		return
+	// 	}
+	// 	c.Header("Content-Encoding", "br")
+	// 	c.Header("Vary", "Accept-Encoding")
+	// 	brWriter := brotli.NewWriterV2(c.Writer, brotli.DefaultCompression)
+	// 	x := &CompressMidle{c.Writer, brWriter, 0}
+	// 	c.Writer = x
+	// 	defer func() {
+	// 		brWriter.Close()
+	// 		c.Header("Content-Length", strconv.Itoa(x.Length))
+	// 	}()
+	// 	c.Next()
+	// })
+	router.Use(middleware.Decompress())
+	router.Use(middleware.GzipWithConfig(middleware.GzipConfig{
+		Level: 5,
+	}))
 	handler(router)
 	zap.L().With(zap.Int("port", port)).Info("start server")
-	err := router.Run(fmt.Sprintf(":%d", port))
+	err := router.Start(fmt.Sprintf(":%d", port))
 	if err != nil && onErr != nil {
 		onErr(err)
 		return
@@ -191,45 +293,45 @@ func startMetricsHandler(port int) {
 	http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
 }
 
-type CompressMidle struct {
-	gin.ResponseWriter
-	writer *matchfinder.Writer
-	Length int
-}
+// type CompressMidle struct {
+// 	gin.ResponseWriter
+// 	writer *matchfinder.Writer
+// 	Length int
+// }
 
-func (g *CompressMidle) WriteString(s string) (int, error) {
-	g.Length += len(s)
-	return g.writer.Write([]byte(s))
-}
+// func (g *CompressMidle) WriteString(s string) (int, error) {
+// 	g.Length += len(s)
+// 	return g.writer.Write([]byte(s))
+// }
 
-func (g *CompressMidle) Write(data []byte) (int, error) {
-	g.Length += len(data)
-	return g.writer.Write(data)
-}
+// func (g *CompressMidle) Write(data []byte) (int, error) {
+// 	g.Length += len(data)
+// 	return g.writer.Write(data)
+// }
 
-func shouldCompress(req *http.Request) bool {
-	if !strings.Contains(req.Header.Get("Accept-Encoding"), "br") {
-		return false
-	}
-	if strings.Contains(req.URL.Path, "be/s3") {
-		return false
-	}
-	if strings.Contains(req.URL.Path, "be/data/storage") {
-		return false
-	}
-	if strings.Contains(req.URL.Path, "api/storage") {
-		return false
-	}
+// func shouldCompress(req *http.Request) bool {
+// 	if !strings.Contains(req.Header.Get("Accept-Encoding"), "br") {
+// 		return false
+// 	}
+// 	if strings.Contains(req.URL.Path, "be/s3") {
+// 		return false
+// 	}
+// 	if strings.Contains(req.URL.Path, "be/data/storage") {
+// 		return false
+// 	}
+// 	if strings.Contains(req.URL.Path, "api/storage") {
+// 		return false
+// 	}
 
-	extension := filepath.Ext(req.URL.Path)
-	if len(extension) < 4 { // fast path
-		return true
-	}
+// 	extension := filepath.Ext(req.URL.Path)
+// 	if len(extension) < 4 { // fast path
+// 		return true
+// 	}
 
-	switch extension {
-	case ".png", ".gif", ".jpeg", ".jpg", ".webp":
-		return false
-	default:
-		return true
-	}
-}
+// 	switch extension {
+// 	case ".png", ".gif", ".jpeg", ".jpg", ".webp":
+// 		return false
+// 	default:
+// 		return true
+// 	}
+// }

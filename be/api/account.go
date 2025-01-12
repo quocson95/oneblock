@@ -5,18 +5,18 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo/v4"
 )
 
 type AccountApi struct {
 }
 
-func (o *AccountApi) Handler(r gin.IRoutes) {
+func (o *AccountApi) Handler(r *echo.Group) {
 	r.POST("/token", o.AccountToken)
 }
-func (o *AccountApi) AccountToken(c *gin.Context) {
+func (o *AccountApi) AccountToken(c echo.Context) error {
 	tokenResp := security.TokenResponse{}
-	data, _ := io.ReadAll(c.Request.Body)
+	data, _ := io.ReadAll(c.Request().Body)
 	tokenResp.Token = string(data)
-	c.JSON(http.StatusOK, tokenResp)
+	return c.JSON(http.StatusOK, tokenResp)
 }

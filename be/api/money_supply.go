@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
 )
 
@@ -40,34 +40,34 @@ func load(id MoneyId) (common.Money, error) {
 	return money, nil
 }
 
-func MoneySupplyM1(c *gin.Context) {
+func MoneySupplyM1(c echo.Context) error {
 	money, err := load(MoneyM1Id)
 	if err != nil {
 		zap.L().With(zap.Error(err)).Error("load data error")
-		c.AbortWithStatusJSON(http.StatusBadRequest, "load data error")
+		return echo.NewHTTPError(http.StatusBadRequest, "load data error")
 	}
-	c.JSON(http.StatusOK, money)
+	return c.JSON(http.StatusOK, money)
 }
 
-func MoneySupplyM2(c *gin.Context) {
+func MoneySupplyM2(c echo.Context) error {
 	money, err := load(MoneyM2Id)
 	if err != nil {
 		zap.L().With(zap.Error(err)).Error("load data error")
-		c.AbortWithStatusJSON(http.StatusBadRequest, "load data error")
+		return echo.NewHTTPError(http.StatusBadRequest, "load data error")
 	}
-	c.JSON(http.StatusOK, money)
+	return c.JSON(http.StatusOK, money)
 }
 
-func MoneySupplyAgress(c *gin.Context) {
+func MoneySupplyAgress(c echo.Context) error {
 	m1, err := load(MoneyM1Id)
 	if err != nil {
 		zap.L().With(zap.Error(err)).Error("load data error")
-		c.AbortWithStatusJSON(http.StatusBadRequest, "load data error")
+		return echo.NewHTTPError(http.StatusBadRequest, "load data error")
 	}
 	m2, err := load(MoneyM2Id)
 	if err != nil {
 		zap.L().With(zap.Error(err)).Error("load data error")
-		c.AbortWithStatusJSON(http.StatusBadRequest, "load data error")
+		return echo.NewHTTPError(http.StatusBadRequest, "load data error")
 	}
 	btc := common.CorrelationData{}
 	err = common.Load(common.BtcGold, func(data []byte) error {
@@ -75,10 +75,10 @@ func MoneySupplyAgress(c *gin.Context) {
 	})
 	if err != nil {
 		zap.L().With(zap.Error(err)).Error("load data error")
-		c.AbortWithStatusJSON(http.StatusBadRequest, "load data error")
+		return echo.NewHTTPError(http.StatusBadRequest, "load data error")
 	}
 	t := time.Now()
 	fromTime := time.Date(t.Year()-6, t.Month(), 0, 0, 0, 0, 0, t.Location())
 	mAgress := common.Agresss(m1, m2, btc, fromTime)
-	c.JSON(http.StatusOK, mAgress)
+	return c.JSON(http.StatusOK, mAgress)
 }

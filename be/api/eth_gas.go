@@ -3,18 +3,17 @@ package api
 import (
 	"be/common"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"math"
 	"net/http"
 	"strconv"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
 )
 
-func EthGasHistory(c *gin.Context) {
+func EthGasHistory(c echo.Context) error {
 	ethWei := &common.EthGasWei{
 		TimeUnix: make([]int, 0),
 		Wei:      make([]int, 0),
@@ -40,7 +39,7 @@ func EthGasHistory(c *gin.Context) {
 	})
 	if err != nil {
 		zap.L().With(zap.Error(err)).Error("load data error")
-		c.AbortWithError(http.StatusBadRequest, errors.New("load data error"))
+		return echo.NewHTTPError(http.StatusBadRequest, "load data error")
 	}
 	btc := common.CorrelationData{}
 	err = common.Load(common.BtcGold, func(data []byte) error {
@@ -48,7 +47,7 @@ func EthGasHistory(c *gin.Context) {
 	})
 	if err != nil {
 		zap.L().With(zap.Error(err)).Error("load data error")
-		c.AbortWithStatusJSON(http.StatusBadRequest, "load data error")
+		return echo.NewHTTPError(http.StatusBadRequest, "load data error")
 	}
 	holderBtc := &common.HolderBtc{}
 	holderBtc.Load(fromTime)
@@ -75,5 +74,5 @@ func EthGasHistory(c *gin.Context) {
 	// 		}
 	// 	}
 	// }
-	c.JSON(http.StatusOK, ethWei)
+	return c.JSON(http.StatusOK, ethWei)
 }

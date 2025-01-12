@@ -15,7 +15,7 @@ type UsertClaims struct {
 	jwt.Claims
 }
 
-var secretKey = "secretKey"
+var SecretJwtAuth = "secretKey"
 
 type TokenResponse struct {
 	Token      string `json:"token,omitempty"`
@@ -45,7 +45,7 @@ func CreateToken(user *common.User) (*TokenResponse, error) {
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	// Sign the token
-	signedToken, err := token.SignedString([]byte(secretKey))
+	signedToken, err := token.SignedString([]byte(SecretJwtAuth))
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +59,7 @@ func VerifyToken(token string) (*common.User, error) {
 	// claim :=var claims *Claims
 	// var claims jwt.Claims =
 	tokenParse, err := jwt.Parse(token, func(t *jwt.Token) (interface{}, error) {
-		return []byte(secretKey), nil
+		return []byte(SecretJwtAuth), nil
 	})
 	if err != nil {
 		return nil, err
