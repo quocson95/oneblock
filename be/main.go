@@ -10,6 +10,7 @@ import (
 	"be/security"
 	"be/sp500"
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -126,6 +127,9 @@ func main() {
 			}))
 			new(apiadmin.MdxAdminController).Handler(adminRouter.Group("/mdx"))
 			new(apiadmin.ICSAdminController).Handler(adminRouter.Group("/ics"))
+		}
+		if data, err := json.MarshalIndent(router.Routes(), "", "  "); err == nil {
+			os.WriteFile("routes.json", data, 0644)
 		}
 	}, func(err error) {
 		// e.Logger.Fatal(e.Start(fmt.Sprintf(":%d", port)))
