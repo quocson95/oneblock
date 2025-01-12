@@ -66,7 +66,8 @@ func main() {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	_ = ctx
-	// go job.StartJobCrawl(ctx)
+	job.JobCrawlInvestingCalendar()
+	go job.StartJobCrawl(ctx)
 	go job.StartJobResizeImage(ctx)
 
 	startServeAPI(port, func(router *gin.Engine) {

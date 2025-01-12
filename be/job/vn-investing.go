@@ -122,7 +122,10 @@ func InsertEventInvestCal(events []common.EconomicEvent) {
 			EndUnix:   event.TimeUnix + 30*60,
 		}
 		if (ics).Exist() {
-			ics.Updates(map[string]interface{}{"desp": ics.Desp})
+			if er := ics.Updates(map[string]interface{}{"desp": ics.Desp}); er != nil {
+				zap.L().With(zap.String("uid", ics.Uid)).With(zap.Error(err)).Error("update failed")
+			}
+
 		} else {
 			err = ics.Insert()
 

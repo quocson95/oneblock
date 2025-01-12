@@ -62,11 +62,11 @@ func (i *ICS) Updates(changes map[string]interface{}) error {
 	if len(changes) == 0 {
 		return nil
 	}
-	if i.ID == 0 {
+	if len(i.Uid) == 0 {
 		return errors.New("id not allow less than zero")
 	}
 	changes["updated_at"] = time.Now()
-	return GetDB().Model(i).Where("id=? and deleted_at is null", i.ID).Updates(changes).Error
+	return GetDB().Model(i).Where("uid=? and deleted_at is null", i.Uid).Updates(changes).Error
 }
 
 func (i *ICS) Delete() error {

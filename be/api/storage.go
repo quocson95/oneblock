@@ -34,9 +34,9 @@ func init() {
 	uuid.EnableRandPool()
 }
 
-var cachePreSign = make(map[string]*common.S3PreSign)
-
 type S3Storage struct{}
+
+var wlBucket = map[string]struct{}{"cms-images": {}, common.DefaultBucketMdx.String(): {}}
 
 func (h *S3Storage) Handler(c *gin.RouterGroup) {
 	c.GET("", h.StorageFile)
@@ -48,6 +48,10 @@ func (h *S3Storage) StorageFile(c *gin.Context) {
 	bucket := c.Query("bucket")
 	name := c.Query("name")
 	noCache := c.Query("noCache") == "true"
+	if _, exsit := wlBucket[bucket]; !exsit {
+		c.AbortWithStatus(http.StatusOK)
+		return
+	}
 	if len(name) == 0 {
 		h.StorageListObject(c)
 		return

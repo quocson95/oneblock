@@ -1,5 +1,3 @@
-oneblock
-config.json
-be/server.crt
-be/server.key
-nohup.out
+upload-s3/**
+be/nohup.out
+**.gz

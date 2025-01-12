@@ -105,6 +105,7 @@ func (o *Oauth2Api) GooleOauth2Callback(c *gin.Context) {
 		c.Redirect(http.StatusFound, redirectUrl)
 		return
 	}
+	zap.L().With(zap.String("user", user.Email)).Info("redirect user ok")
 	redirectUrl = fmt.Sprintf("%s?id=%s&errCode=%d&errStr=%s", config.GetConfig().GoogleConsole.RedirectURI, tokenResp.Token, 0, "")
 	// c.SetCookie("token", tokenResp.Token, 86400, "", "https://editor.oneblock.vn", false, false)
 	c.Redirect(http.StatusFound, redirectUrl)
