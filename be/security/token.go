@@ -15,7 +15,14 @@ type UsertClaims struct {
 	jwt.Claims
 }
 
-var SecretJwtAuth = "secretKey"
+var SecretJwtAuth []byte
+var SecretJwtAuthDashboard []byte
+
+func init() {
+	startWeek, _ := common.GetWeekRange(time.Now())
+	SecretJwtAuth = []byte(startWeek.String())
+	SecretJwtAuthDashboard = []byte("SecretJwtAuthDashboard")
+}
 
 type TokenResponse struct {
 	Token      string `json:"token,omitempty"`
@@ -26,7 +33,7 @@ func CreateToken(user *common.User) (*TokenResponse, error) {
 	if user == nil {
 		return nil, errors.New("user is nil")
 	}
-	if user.ID < 0 || user.Role <= 0 {
+	if user.ID <= 0 || user.Role <= 0 {
 		return nil, errors.New("user invalid")
 	}
 	now := time.Now()
@@ -56,6 +63,29 @@ func CreateToken(user *common.User) (*TokenResponse, error) {
 }
 
 func VerifyToken(token string) (*common.User, error) {
+	// claim :=var claims *Claims
+	// var claims jwt.Claims =
+	tokenParse, err := jwt.Parse(token, func(t *jwt.Token) (interface{}, error) {
+		return []byte(SecretJwtAuth), nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	if !tokenParse.Valid {
+		return nil, errors.New("token not valid")
+	}
+	user, ok := tokenParse.Claims.(jwt.MapClaims)
+	if !ok {
+		return nil, errors.New("parse to user failed")
+	}
+	return &common.User{
+		Model: gorm.Model{
+			ID: uint(user["Id"].(float64)),
+		},
+	}, nil
+}
+
+func VerifyTokenDashboard(token string) (*common.User, error) {
 	// claim :=var claims *Claims
 	// var claims jwt.Claims =
 	tokenParse, err := jwt.Parse(token, func(t *jwt.Token) (interface{}, error) {

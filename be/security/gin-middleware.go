@@ -43,9 +43,9 @@ import (
 // 	}
 // }
 
-func SuccessEchoAuthHandler(db *gorm.DB) func(c echo.Context) {
+func SuccessHandlerUser(db *gorm.DB) func(c echo.Context) {
 	return func(c echo.Context) {
-		token := c.Request().Header.Get("Authorize")
+		token := c.Request().Header.Get("Authorization")
 		user, err := VerifyToken(token)
 		if err != nil {
 			zap.L().With(zap.Error(err)).With(zap.String("token", token)).Error("verify token failed")
@@ -63,6 +63,32 @@ func SuccessEchoAuthHandler(db *gorm.DB) func(c echo.Context) {
 			zap.L().With(zap.Error(err)).Error("user not found")
 			return
 		}
+		c.Set("user", user)
+		common.CacheUser.Add(token, *user)
+	}
+}
+
+func SuccessHandlerDashboardUser(db *gorm.DB) func(c echo.Context) {
+	return func(c echo.Context) {
+		token := c.Request().Header.Get("Authorization")
+		user, err := VerifyTokenDashboard(token)
+		if err != nil {
+			zap.L().With(zap.Error(err)).With(zap.String("token", token)).Error("verify token failed")
+			return
+		}
+		if cacheUser, ok := common.CacheUser.Get(token); ok {
+			user := &common.User{
+				UserName: cacheUser.UserName,
+				Email:    cacheUser.Email,
+			}
+			c.Set("user", user)
+		}
+		err = user.Read()
+		if err != nil {
+			zap.L().With(zap.Error(err)).Error("user not found")
+			return
+		}
+		
 		c.Set("user", user)
 		common.CacheUser.Add(token, *user)
 	}

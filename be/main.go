@@ -1,8 +1,9 @@
 package main
 
 import (
-	"be/api"
-	apiadmin "be/api_admin"
+	apiadmin "be/api/admin"
+	"be/api/dashboard"
+	api "be/api/general"
 	"be/common"
 	"be/config"
 	"be/database"
@@ -15,6 +16,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strings"
 
 	echojwt "github.com/labstack/echo-jwt/v4"
 	"github.com/labstack/echo/v4"
@@ -48,13 +50,7 @@ func main() {
 	go startMetricsHandler(81)
 	config.LoadConfig("config.json")
 	common.DefaultS3Hepler.Init(config.GetConfig().S3Endpoint, "hcm", config.GetConfig().S3AccessKey, config.GetConfig().S3SecretKey)
-	// e := echo.New()
-	// e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-	// 	AllowOrigins: []string{"*"},                                                      // Allow all origins
-	// 	AllowMethods: []string{echo.GET, echo.POST, echo.PUT, echo.DELETE, echo.OPTIONS}, // Allow all methods
-	// 	AllowHeaders: []string{echo.HeaderContentType, echo.HeaderAccept},
-	// }))
-	port := 80
+	port := 8080
 	if err := database.InitDB(config.GetConfig().PostgressDsn); err != nil {
 		panic(fmt.Errorf("init db failed: %s", err.Error()))
 	}
@@ -62,12 +58,24 @@ func main() {
 	common.GetDB = func() *gorm.DB {
 		return database.DB
 	}
+	createDefaultUser()
+
 	ctx, cancel := context.WithCancel(context.Background())
 	_ = ctx
 	job.JobCrawlInvestingCalendar()
 	go job.StartJobCrawl(ctx)
 	go job.StartJobResizeImage(ctx)
 	startEchoServeAPI(port, func(router *echo.Echo) {
+		fnHello := func(c echo.Context) error {
+			return c.HTML(http.StatusOK, "oneblock")
+		}
+		{
+			router.GET("", fnHello)
+			router.GET("/", fnHello)
+			router.GET("/favicon.ico", func(c echo.Context) error {
+				return c.File("favicon.svg")
+			})
+		}
 		beRouter := router.Group("/be")
 		{
 			staticRouter := beRouter.Group("/static")
@@ -95,25 +103,9 @@ func main() {
 			router.GET("/usd_vnd", api.USDVNDRate)
 
 		}
-		// router.GET("/be/data/btc_gold_raw", api.BtcGold)
-		// router.GET("/be/data/m1", api.MoneySupplyM1)
-		// router.GET("/be/data/m2", api.MoneySupplyM2)
-		// router.GET("/be/data/money_supply", api.MoneySupplyAgress)
-		// router.GET("/be/data/btc_gold", api.BtcGoldAgressApi)
-		// router.GET("/be/data/sp500", sp500.Sp500)
-
-		// router.GET("/be/data/funding_market_core", api.FundingMarketCore)
-		// router.GET("/be/data/btc_holder", api.BtcHolder)
-
-		// router.GET("/be/data/btc_eth_static", api.BtcEthStatic)
-		// router.GET("/be/data/storage", api.StorageFile)
-		// router.GET("/api/storage", api.StorageFile)
-		// router.GET("/api/storage", )
-		// new(api.S3Storage).Handler(router.Group("/be/data/storage"))
-
 		new(api.MdxController).Handler(beRouter.Group("/mdx"))
 		new(api.AccountApi).Handler(beRouter.Group("/account"))
-		api.NewOath2Api(config.GetConfig().GoogleConsole).Handler(beRouter.Group("/auth"))
+		api.NewOath2Api(config.GetConfig().GoogleConsole, nil, nil).Handler(beRouter.Group("/auth"))
 		new(api.ICSAPi).Handler(beRouter.Group("/ics"))
 
 		//auth
@@ -122,12 +114,46 @@ func main() {
 			adminRouter.Use(echojwt.WithConfig(echojwt.Config{
 				// ...
 				SigningKey:     []byte(security.SecretJwtAuth),
-				SuccessHandler: security.SuccessEchoAuthHandler(database.DB),
+				SuccessHandler: security.SuccessHandlerUser(database.DB),
+				// ContinueOnIgnoredError: false,
+				ErrorHandler: func(c echo.Context, err error) error {
+					zap.L().With(zap.Error(err)).Error("jwt handler error")
+					return c.NoContent(http.StatusUnauthorized)
+				},
+				TokenLookup: "header:Authorization",
 				// ...
 			}))
 			new(apiadmin.MdxAdminController).Handler(adminRouter.Group("/mdx"))
 			new(apiadmin.ICSAdminController).Handler(adminRouter.Group("/ics"))
 		}
+		// dashboard
+		{
+			// be/dashboard/sso/google
+			suffixSkips := []string{"/sso/google", "/sso/google/callback"}
+			dashboardRouter := beRouter.Group("/dashboard")
+			dashboardRouter.Use(echojwt.WithConfig(echojwt.Config{
+				// ...
+				SigningKey:     []byte(security.SecretJwtAuthDashboard),
+				SuccessHandler: security.SuccessHandlerDashboardUser(database.DB),
+				// ContinueOnIgnoredError: false,
+				ErrorHandler: func(c echo.Context, err error) error {
+					zap.L().With(zap.Error(err)).Error("jwt handler error")
+					return c.NoContent(http.StatusUnauthorized)
+				},
+				TokenLookup: "header:Authorization",
+				Skipper: func(c echo.Context) bool {
+					path := c.Path()
+					for _, skip := range suffixSkips {
+						if ok := strings.HasSuffix(path, skip); ok {
+							return true
+						}
+					}
+					return false
+				},
+			}))
+			new(dashboard.DashBoardController).Handler(dashboardRouter)
+		}
+
 		if data, err := json.MarshalIndent(router.Routes(), "", "  "); err == nil {
 			os.WriteFile("routes.json", data, 0644)
 		}
@@ -206,6 +232,7 @@ func startEchoServeAPI(port int, handler func(router *echo.Echo), onErr func(err
 		LogError:    true,
 		LogLatency:  true,
 		HandleError: true, // forwards error to the global error handler, so it can decide appropriate status code
+		LogRemoteIP: true,
 		LogValuesFunc: func(c echo.Context, v middleware.RequestLoggerValues) error {
 			if v.Error == nil {
 				logger.LogAttrs(context.Background(), slog.LevelInfo,
@@ -213,12 +240,14 @@ func startEchoServeAPI(port int, handler func(router *echo.Echo), onErr func(err
 					slog.String("latency", v.Latency.String()),
 					slog.String("uri", v.URI),
 					slog.Int("status", v.Status),
+					slog.String("ip", v.RemoteIP),
 				)
 			} else {
 				logger.LogAttrs(context.Background(), slog.LevelError, "REQUEST_ERROR",
 					slog.String("latency", v.Latency.String()),
 					slog.String("uri", v.URI),
 					slog.Int("status", v.Status),
+					slog.String("ip", v.RemoteIP),
 					slog.String("err", v.Error.Error()),
 				)
 			}
@@ -230,7 +259,7 @@ func startEchoServeAPI(port int, handler func(router *echo.Echo), onErr func(err
 	router.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		// AllowOrigins: []string{"https://labstack.com", "https://labstack.net"},
 		AllowMethods:  []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodOptions, http.MethodDelete},
-		AllowHeaders:  []string{"Content-Type", "Accept", "user-agent", "referer", "Cookie", "Authorize"},
+		AllowHeaders:  []string{"Content-Type", "Accept", "user-agent", "referer", "Cookie", "Authorize", "Authorization"},
 		ExposeHeaders: []string{"Content-Length", "Access-Control-Allow-Origin"},
 		AllowOriginFunc: func(origin string) (bool, error) {
 			if _, exist := trustOrigin[origin]; exist {
@@ -242,21 +271,6 @@ func startEchoServeAPI(port int, handler func(router *echo.Echo), onErr func(err
 		},
 	}))
 
-	// router.Use(func(c *gin.Context) {
-	// 	if !shouldCompress(c.Request) {
-	// 		return
-	// 	}
-	// 	c.Header("Content-Encoding", "br")
-	// 	c.Header("Vary", "Accept-Encoding")
-	// 	brWriter := brotli.NewWriterV2(c.Writer, brotli.DefaultCompression)
-	// 	x := &CompressMidle{c.Writer, brWriter, 0}
-	// 	c.Writer = x
-	// 	defer func() {
-	// 		brWriter.Close()
-	// 		c.Header("Content-Length", strconv.Itoa(x.Length))
-	// 	}()
-	// 	c.Next()
-	// })
 	router.Use(middleware.Decompress())
 	router.Use(middleware.GzipWithConfig(middleware.GzipConfig{
 		Level: 5,
@@ -289,6 +303,7 @@ func createDefaultUser() {
 		if err := u.Create(); err != nil {
 			zap.L().With(zap.Error(err)).With(zap.String("email", email)).Error("add user failed")
 		}
+
 	}
 }
 
