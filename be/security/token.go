@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt"
-	"gorm.io/gorm"
+	"github.com/labstack/echo/v4"
 )
 
 type UsertClaims struct {
@@ -29,7 +29,7 @@ type TokenResponse struct {
 	ExpireUnix int64  `json:"expire_unix,omitempty"`
 }
 
-func CreateToken(user *common.User) (*TokenResponse, error) {
+func CreateToken(user *common.User, secret []byte) (*TokenResponse, error) {
 	if user == nil {
 		return nil, errors.New("user is nil")
 	}
@@ -52,7 +52,7 @@ func CreateToken(user *common.User) (*TokenResponse, error) {
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	// Sign the token
-	signedToken, err := token.SignedString([]byte(SecretJwtAuth))
+	signedToken, err := token.SignedString([]byte(secret))
 	if err != nil {
 		return nil, err
 	}
@@ -79,9 +79,7 @@ func VerifyToken(token string) (*common.User, error) {
 		return nil, errors.New("parse to user failed")
 	}
 	return &common.User{
-		Model: gorm.Model{
-			ID: uint(user["Id"].(float64)),
-		},
+		ID: uint(user["Id"].(float64)),
 	}, nil
 }
 
@@ -89,7 +87,7 @@ func VerifyTokenDashboard(token string) (*common.User, error) {
 	// claim :=var claims *Claims
 	// var claims jwt.Claims =
 	tokenParse, err := jwt.Parse(token, func(t *jwt.Token) (interface{}, error) {
-		return []byte(SecretJwtAuth), nil
+		return []byte(SecretJwtAuthDashboard), nil
 	})
 	if err != nil {
 		return nil, err
@@ -102,8 +100,14 @@ func VerifyTokenDashboard(token string) (*common.User, error) {
 		return nil, errors.New("parse to user failed")
 	}
 	return &common.User{
-		Model: gorm.Model{
-			ID: uint(user["Id"].(float64)),
-		},
+		ID: uint(user["Id"].(float64)),
 	}, nil
+}
+
+func GetUserCtx(c echo.Context) *common.User {
+	user, ok := c.Get("user").(*common.User)
+	if !ok {
+		return nil
+	}
+	return user
 }

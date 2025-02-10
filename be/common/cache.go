@@ -67,3 +67,14 @@ func isMimeImage(mime string) bool {
 	}
 	return false
 }
+
+func GetUserInCache(email string) (User, error) {
+	user, ok := CacheUser.Get(email)
+	if ok {
+		return user, nil
+	}
+	u := &User{}
+	err := u.FindByEmail(email, []RoleUser{RoleUserAdmin, RoleUserManager, RoluserCustomer}, "Subscribe", "Subscribe.Plan")
+	CacheUser.Add(email, *u)
+	return *u, err
+}

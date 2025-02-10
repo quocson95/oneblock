@@ -14,6 +14,17 @@ type GoogleConsole struct {
 	RedirectURI string `yaml:"redirect_uri" json:"redirect_uri,omitempty"`
 }
 
+type PayOS struct {
+	ClientID    string `json:"client_id,omitempty"`
+	ApiKey      string `json:"api_key,omitempty"`
+	ChecksumKey string `json:"checksum_key,omitempty"`
+}
+
+type Redis struct {
+	Addr     string `json:"addr,omitempty"`
+	Password string `json:"password,omitempty"`
+}
+
 type config struct {
 	ApiEthKey             string        `json:"api_eth_key,omitempty"`
 	S3Endpoint            string        `json:"s3_endpoint,omitempty"`
@@ -23,6 +34,15 @@ type config struct {
 	GoogleConsole         GoogleConsole `json:"google_console,omitempty"`
 	GoogleConsoleCustomer GoogleConsole `json:"google_console_customer,omitempty"`
 	TrustOrigin           []string      `json:"trust_origin,omitempty"`
+	PayOS                 PayOS         `json:"pay_os,omitempty"`
+	TeleBot               TeleBot       `json:"tele_bot,omitempty"`
+	Redis                 Redis         `json:"redis,omitempty"`
+}
+
+type TeleBot struct {
+	Token           string `json:"token,omitempty"`
+	ChatId          int64  `json:"chat_id,omitempty"`
+	ChannelUsername string `json:"channel_username,omitempty"`
 }
 
 var defaultConfig = &config{}

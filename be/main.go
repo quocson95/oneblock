@@ -4,6 +4,7 @@ import (
 	apiadmin "be/api/admin"
 	"be/api/dashboard"
 	api "be/api/general"
+	"be/bot"
 	"be/common"
 	"be/config"
 	"be/database"
@@ -54,16 +55,20 @@ func main() {
 	if err := database.InitDB(config.GetConfig().PostgressDsn); err != nil {
 		panic(fmt.Errorf("init db failed: %s", err.Error()))
 	}
-	database.DB.AutoMigrate(new(common.Mdx), new(common.User), new(common.ICS), new(common.CrawlLog), new(common.S3ObjectSync))
+	database.DB.AutoMigrate(new(common.Mdx), new(common.User), new(common.ICS), new(common.CrawlLog), new(common.S3ObjectSync),
+		new(common.Payment), new(common.Plan), new(common.Subscribe), new(common.CopyTradeOrder))
 	common.GetDB = func() *gorm.DB {
 		return database.DB
 	}
+	go createPlan()
+	// common.InitRedis(config.GetConfig().Redis.Addr, )
 	createDefaultUser()
+	go bot.InitTeleBot(config.GetConfig().TeleBot.Token, config.GetConfig().TeleBot.ChatId, config.GetConfig().TeleBot.ChannelUsername)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	_ = ctx
 	job.JobCrawlInvestingCalendar()
-	go job.StartJobCrawl(ctx)
+	go job.StartJob(ctx)
 	go job.StartJobResizeImage(ctx)
 	startEchoServeAPI(port, func(router *echo.Echo) {
 		fnHello := func(c echo.Context) error {
@@ -105,7 +110,7 @@ func main() {
 		}
 		new(api.MdxController).Handler(beRouter.Group("/mdx"))
 		new(api.AccountApi).Handler(beRouter.Group("/account"))
-		api.NewOath2Api(config.GetConfig().GoogleConsole, nil, nil).Handler(beRouter.Group("/auth"))
+		api.NewOath2Api(config.GetConfig().GoogleConsole, security.SecretJwtAuth, nil, nil).Handler(beRouter.Group("/auth"))
 		new(api.ICSAPi).Handler(beRouter.Group("/ics"))
 
 		//auth
@@ -120,7 +125,7 @@ func main() {
 					zap.L().With(zap.Error(err)).Error("jwt handler error")
 					return c.NoContent(http.StatusUnauthorized)
 				},
-				TokenLookup: "header:Authorization",
+				TokenLookup: "header:Authorization,header:Authorization:Bearer ",
 				// ...
 			}))
 			new(apiadmin.MdxAdminController).Handler(adminRouter.Group("/mdx"))
@@ -129,7 +134,8 @@ func main() {
 		// dashboard
 		{
 			// be/dashboard/sso/google
-			suffixSkips := []string{"/sso/google", "/sso/google/callback"}
+			suffixSkips := []string{"/sso/google", "/sso/google/callback", "/payment/payos/webhook"}
+			suffixContainSkips := []string{"/payment/payos/qrcode/"}
 			dashboardRouter := beRouter.Group("/dashboard")
 			dashboardRouter.Use(echojwt.WithConfig(echojwt.Config{
 				// ...
@@ -137,14 +143,19 @@ func main() {
 				SuccessHandler: security.SuccessHandlerDashboardUser(database.DB),
 				// ContinueOnIgnoredError: false,
 				ErrorHandler: func(c echo.Context, err error) error {
-					zap.L().With(zap.Error(err)).Error("jwt handler error")
+					zap.L().With(zap.String("token", c.Request().Header.Get("Authorization"))).With(zap.Error(err)).Error("jwt handler error")
 					return c.NoContent(http.StatusUnauthorized)
 				},
-				TokenLookup: "header:Authorization",
+				TokenLookup: "header:Authorization,header:Authorization:Bearer ,cookie:authorization",
 				Skipper: func(c echo.Context) bool {
 					path := c.Path()
 					for _, skip := range suffixSkips {
 						if ok := strings.HasSuffix(path, skip); ok {
+							return true
+						}
+					}
+					for _, skip := range suffixContainSkips {
+						if ok := strings.Contains(path, skip); ok {
 							return true
 						}
 					}
@@ -274,6 +285,9 @@ func startEchoServeAPI(port int, handler func(router *echo.Echo), onErr func(err
 	router.Use(middleware.Decompress())
 	router.Use(middleware.GzipWithConfig(middleware.GzipConfig{
 		Level: 5,
+		Skipper: func(c echo.Context) bool {
+			return c.Response().Header().Get("Content-Type") == "image/png"
+		},
 	}))
 	handler(router)
 	zap.L().With(zap.Int("port", port)).Info("start server")
@@ -286,25 +300,27 @@ func startEchoServeAPI(port int, handler func(router *echo.Echo), onErr func(err
 }
 
 func createDefaultUser() {
-	emails := []string{
-		"dangquocson1995@gmail.com",
-		"nghuuloc512@gmail.com",
-		"nguyentrungbmt17@gmail.com",
-		"haotran1689@gmail.com",
-		"dtoan.bui@gmail.com",
-	}
-	for _, email := range emails {
-		u := common.User{
-			UserName:     email,
-			Email:        email,
-			Role:         common.RoleUserAdmin,
-			UsdtInWallet: 0,
-		}
-		if err := u.Create(); err != nil {
-			zap.L().With(zap.Error(err)).With(zap.String("email", email)).Error("add user failed")
-		}
+	// emails := []string{
+	// 	"dangquocson1995@gmail.com",
+	// 	"nghuuloc512@gmail.com",
+	// 	"nguyentrungbmt17@gmail.com",
+	// 	"haotran1689@gmail.com",
+	// 	"dtoan.bui@gmail.com",
+	// }
+	// for _, email := range emails {
+	// 	u := common.User{
+	// 		Email:        email,
+	// 		Role:         common.RoleUserAdmin,
+	// 		UsdtInWallet: 0,
+	// 	}
+	// 	if err := u.Create(); err != nil {
+	// 		zap.L().With(zap.Error(err)).With(zap.String("email", email)).Error("add user failed")
+	// 	}
 
-	}
+	// }
+	// u:=common.User{
+	// 	Email: "sondq.1024@gmail.com",
+	// }
 }
 
 func startMetricsHandler(port int) {
@@ -312,45 +328,16 @@ func startMetricsHandler(port int) {
 	http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
 }
 
-// type CompressMidle struct {
-// 	gin.ResponseWriter
-// 	writer *matchfinder.Writer
-// 	Length int
-// }
-
-// func (g *CompressMidle) WriteString(s string) (int, error) {
-// 	g.Length += len(s)
-// 	return g.writer.Write([]byte(s))
-// }
-
-// func (g *CompressMidle) Write(data []byte) (int, error) {
-// 	g.Length += len(data)
-// 	return g.writer.Write(data)
-// }
-
-// func shouldCompress(req *http.Request) bool {
-// 	if !strings.Contains(req.Header.Get("Accept-Encoding"), "br") {
-// 		return false
-// 	}
-// 	if strings.Contains(req.URL.Path, "be/s3") {
-// 		return false
-// 	}
-// 	if strings.Contains(req.URL.Path, "be/data/storage") {
-// 		return false
-// 	}
-// 	if strings.Contains(req.URL.Path, "api/storage") {
-// 		return false
-// 	}
-
-// 	extension := filepath.Ext(req.URL.Path)
-// 	if len(extension) < 4 { // fast path
-// 		return true
-// 	}
-
-// 	switch extension {
-// 	case ".png", ".gif", ".jpeg", ".jpg", ".webp":
-// 		return false
-// 	default:
-// 		return true
-// 	}
-// }
+func createPlan() {
+	plan := &common.Plan{
+		Id:             1,
+		Name:           "Plan 1",
+		Price:          100,
+		Currency:       "$",
+		Desp:           "This is plan 1",
+		PlanRenewType:  common.PlanRenewTypeMonth,
+		DurationExtend: "86400s",
+	}
+	plan.PriceDisp = fmt.Sprintf("%d %s", plan.Price, plan.Currency)
+	plan.Create()
+}

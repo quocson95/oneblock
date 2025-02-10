@@ -1,10 +1,9 @@
 package common
 
 import (
+	"database/sql"
 	"errors"
 	"time"
-
-	"gorm.io/gorm"
 )
 
 type RoleUser int
@@ -12,18 +11,23 @@ type RoleUser int
 const (
 	RoleUserAdmin   = 1
 	RoleUserManager = 2
-	RoluserMember   = 3
+	RoluserCustomer = 3
 	// RolerUserGuest = 2
 )
 
 type User struct {
-	gorm.Model
-	UserName     string    `json:"user_name,omitempty"`
-	Email        string    `gorm:"unique" json:"email,omitempty"`
-	Role         RoleUser  `json:"role,omitempty"`
-	UsdtInWallet int64     `json:"usdt_in_wallet,omitempty"` // usdt
-	LastLogin    time.Time `json:"last_login,omitempty"`
-	Picture      string    `json:"picture,omitempty"`
+	ID            uint         `gorm:"primarykey" json:"id,omitempty"`
+	CreatedAt     time.Time    `json:"created_at,omitempty"`
+	UpdatedAt     time.Time    `json:"updated_at,omitempty"`
+	DeletedAt     sql.NullTime `gorm:"index" json:"-"`
+	UserName      string       `json:"userName,omitempty"`
+	Email         string       `gorm:"unique" json:"email,omitempty"`
+	Role          RoleUser     `json:"role,omitempty"`
+	UsdtInWallet  int64        `json:"usdtInWallet,omitempty"` // usdt
+	LastLoginUnix int64        `json:"lastLoginUnix,omitempty"`
+	Picture       string       `json:"picture,omitempty"`
+	// SubscribeId   uint         `json:"subscribeId,omitempty"`
+	Subscribe Subscribe `json:"subscribe,omitempty"`
 }
 
 func (u *User) TableName() string {
@@ -47,7 +51,7 @@ func (u *User) Read() error {
 	return tx.Error
 }
 
-func (u *User) FindByEmail(email string, roles ...RoleUser) error {
+func (u *User) FindByEmail(email string, roles []RoleUser, joins ...string) error {
 	if len(email) <= 0 {
 		return errors.New("invalid email")
 	}
@@ -58,8 +62,11 @@ func (u *User) FindByEmail(email string, roles ...RoleUser) error {
 		query += " and role IN ?"
 		args = append(args, roles)
 	}
-	tx := GetDB().Model(u).Where(query, args...)
-	tx = tx.First(u)
+	tx := GetDB().Model(u)
+	for _, join := range joins {
+		tx.Preload(join)
+	}
+	tx = tx.Where(query, args...).First(u)
 	return tx.Error
 }
 
@@ -72,4 +79,10 @@ func (u *User) Update(changes map[string]interface{}) error {
 	}
 	tx := GetDB().Model(u).Where("id=?", u.ID).Updates(changes)
 	return tx.Error
+}
+
+func GetCustomers() ([]User, error) {
+	ml := make([]User, 0)
+	err := GetDB().Debug().Model(new(User)).Preload("Subscribe").Preload("Subscribe.Plan").Where("role=?", RoluserCustomer).Find(&ml).Error
+	return ml, err
 }

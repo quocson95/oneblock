@@ -24,9 +24,10 @@ type Oauth2Api struct {
 	redirectUri    string
 	GetUser        func(userInfo map[string]interface{}) (*common.User, error)
 	HookAfterLogin func(user *common.User)
+	SecretAuth     []byte
 }
 
-func NewOath2Api(googleCfg config.GoogleConsole, getUser func(userInfo map[string]interface{}) (*common.User, error), hookAfterLogin func(user *common.User)) *Oauth2Api {
+func NewOath2Api(googleCfg config.GoogleConsole, secretAuth []byte, getUser func(userInfo map[string]interface{}) (*common.User, error), hookAfterLogin func(user *common.User)) *Oauth2Api {
 	// Set up OAuth2 configuration
 	oauth2Config := &oauth2.Config{
 		ClientID:     googleCfg.ID,
@@ -42,12 +43,13 @@ func NewOath2Api(googleCfg config.GoogleConsole, getUser func(userInfo map[strin
 		oauth2State:    common.Sha265Random(),
 		GetUser:        getUser,
 		HookAfterLogin: hookAfterLogin,
+		SecretAuth:     secretAuth,
 	}
 	if getUser == nil {
 		o.GetUser = func(userInfo map[string]interface{}) (*common.User, error) {
 			email, _ := userInfo["email"].(string)
 			user := &common.User{}
-			err := user.FindByEmail(email, common.RoleUserAdmin)
+			err := user.FindByEmail(email, []common.RoleUser{common.RoleUserAdmin})
 			return user, err
 		}
 	}
@@ -119,7 +121,8 @@ func (o *Oauth2Api) GooleOauth2Callback(c echo.Context) error {
 		// c.AbortWithError(http.StatusBadRequest, errors.New("user-not-found"))
 		return c.Redirect(http.StatusFound, redirectUrl)
 	}
-	tokenResp, err := security.CreateToken(user)
+	var tokenResp *security.TokenResponse
+	tokenResp, err = security.CreateToken(user, o.SecretAuth)
 	if err != nil {
 		zap.L().With(zap.String("email", user.Email)).With(zap.Error(err)).Error("create token failed")
 		// c.AbortWithError(http.StatusBadRequest, errors.New("create token failed"))

@@ -2,6 +2,7 @@ package security
 
 import (
 	"be/common"
+	"strings"
 
 	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
@@ -46,6 +47,7 @@ import (
 func SuccessHandlerUser(db *gorm.DB) func(c echo.Context) {
 	return func(c echo.Context) {
 		token := c.Request().Header.Get("Authorization")
+		token = strings.ReplaceAll(token, "Bearer ", "")
 		user, err := VerifyToken(token)
 		if err != nil {
 			zap.L().With(zap.Error(err)).With(zap.String("token", token)).Error("verify token failed")
@@ -53,6 +55,7 @@ func SuccessHandlerUser(db *gorm.DB) func(c echo.Context) {
 		}
 		if cacheUser, ok := common.CacheUser.Get(token); ok {
 			user := &common.User{
+				ID:       cacheUser.ID,
 				UserName: cacheUser.UserName,
 				Email:    cacheUser.Email,
 			}
@@ -71,6 +74,7 @@ func SuccessHandlerUser(db *gorm.DB) func(c echo.Context) {
 func SuccessHandlerDashboardUser(db *gorm.DB) func(c echo.Context) {
 	return func(c echo.Context) {
 		token := c.Request().Header.Get("Authorization")
+		token = strings.ReplaceAll(token, "Bearer ", "")
 		user, err := VerifyTokenDashboard(token)
 		if err != nil {
 			zap.L().With(zap.Error(err)).With(zap.String("token", token)).Error("verify token failed")
@@ -78,6 +82,7 @@ func SuccessHandlerDashboardUser(db *gorm.DB) func(c echo.Context) {
 		}
 		if cacheUser, ok := common.CacheUser.Get(token); ok {
 			user := &common.User{
+				ID:       cacheUser.ID,
 				UserName: cacheUser.UserName,
 				Email:    cacheUser.Email,
 			}
@@ -88,7 +93,7 @@ func SuccessHandlerDashboardUser(db *gorm.DB) func(c echo.Context) {
 			zap.L().With(zap.Error(err)).Error("user not found")
 			return
 		}
-		
+
 		c.Set("user", user)
 		common.CacheUser.Add(token, *user)
 	}
