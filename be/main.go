@@ -273,12 +273,13 @@ func startEchoServeAPI(port int, handler func(router *echo.Echo), onErr func(err
 		AllowHeaders:  []string{"Content-Type", "Accept", "user-agent", "referer", "Cookie", "Authorize", "Authorization"},
 		ExposeHeaders: []string{"Content-Length", "Access-Control-Allow-Origin"},
 		AllowOriginFunc: func(origin string) (bool, error) {
-			if _, exist := trustOrigin[origin]; exist {
-				return true, nil
-			}
-			// return exist
-			zap.L().With(zap.String("origin", origin)).Error("reject origin")
-			return false, nil
+			// if _, exist := trustOrigin[origin]; exist {
+			// 	return true, nil
+			// }
+			// // return exist
+			// zap.L().With(zap.String("origin", origin)).Error("reject origin")
+			// return false, nil
+			return true, nil
 		},
 	}))
 

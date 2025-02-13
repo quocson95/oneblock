@@ -7,6 +7,7 @@ import (
 	"be/security"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -75,8 +76,11 @@ func (d *DashBoardController) Handler(r *echo.Group) {
 				if user == nil {
 					return echo.NewHTTPError(http.StatusBadRequest, "invalid user")
 				}
-				if user.Role != common.RoleUserAdmin && user.Role != common.RoleUserManager {
-					return echo.NewHTTPError(http.StatusBadRequest, "unauthorization user")
+				path := c.Path()
+				if !strings.Contains(path, "/copy-trade") {
+					if user.Role != common.RoleUserAdmin && user.Role != common.RoleUserManager {
+						return echo.NewHTTPError(http.StatusBadRequest, "unauthorization user")
+					}
 				}
 				return next(c)
 			}

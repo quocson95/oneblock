@@ -1,3 +1,4 @@
 upload-s3/**
 be/nohup.out
 **.gz
+libwebp-1.2.0-linux-x86-64

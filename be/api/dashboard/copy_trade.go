@@ -3,7 +3,9 @@ package dashboard
 import (
 	"be/common"
 	"be/security"
+	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -18,6 +20,9 @@ func (t *CopyTradeOrder) Handler(g *echo.Group) {
 
 	g.POST("", t.Create)
 	g.PUT("", t.Update)
+
+	g.GET("/performance", t.PerformanceOverview)
+	g.GET("/perf-data-chart", t.PerfChartData)
 	// g.DELETE("/", t.de)
 }
 
@@ -95,4 +100,43 @@ func (t *CopyTradeOrder) GetAllCopyTrade(c echo.Context) error {
 		return c.NoContent(http.StatusBadRequest)
 	}
 	return c.JSON(http.StatusOK, orders)
+}
+
+func (t *CopyTradeOrder) PerformanceOverview(c echo.Context) error {
+	orders, err := common.OverviewCopyTradeOrder()
+	if err != nil {
+		zap.L().With(zap.Error(err)).Error("get overview copy trade order failed")
+		return c.NoContent(http.StatusBadRequest)
+	}
+	return c.JSON(http.StatusOK, orders)
+}
+
+type ColData struct {
+	Name string   `json:"name,omitempty"`
+	Data []string `json:"data,omitempty"`
+}
+type CopyTradeOrderChartData struct {
+	Xaxis []string  `json:"xaxis,omitempty"`
+	Yaxis []ColData `json:"yaxis,omitempty"`
+}
+
+func (t *CopyTradeOrder) PerfChartData(c echo.Context) error {
+	orders, err := common.OverviewCopyTradeOrder()
+	if err != nil {
+		zap.L().With(zap.Error(err)).Error("get overview copy trade order failed")
+		return c.NoContent(http.StatusBadRequest)
+	}
+	chartData := CopyTradeOrderChartData{}
+	colDataROI := ColData{Name: "ROI"}
+	colDataPNL := ColData{Name: "PNL"}
+
+	for _, order := range orders {
+		x, _ := common.ISOWeekToTime(order.Year, order.Week)
+		chartData.Xaxis = append(chartData.Xaxis, fmt.Sprintf("%2d/%2d", x.Month(), x.Day()))
+		colDataROI.Data = append(colDataROI.Data, fmt.Sprintf("%.2f", order.Roi))
+		colDataPNL.Data = append(colDataPNL.Data, strconv.Itoa(order.PNL))
+	}
+	chartData.Yaxis = append(chartData.Yaxis, colDataPNL)
+	chartData.Yaxis = append(chartData.Yaxis, colDataROI)
+	return c.JSON(http.StatusOK, chartData)
 }

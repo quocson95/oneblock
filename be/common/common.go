@@ -123,3 +123,21 @@ func NewHttpRequest(method, url string, body []byte) (*http.Request, error) {
 	req.ContentLength = int64(len(body))
 	return req, nil
 }
+
+func ISOWeekToTime(year, week int) (time.Time, error) {
+	t := time.Date(year, 1, 4, 0, 0, 0, 0, time.UTC) // Jan 4 is always in ISO week 1
+	isoYear, _ := t.ISOWeek()
+
+	if isoYear != year {
+		t = t.AddDate(1, 0, 0) // Move to next year if needed
+	}
+	// Find the start of the given ISO week
+	for {
+		_, isoWeek := t.ISOWeek()
+		if isoWeek == week {
+			break
+		}
+		t = t.AddDate(0, 0, -1)
+	}
+	return t, nil
+}

@@ -19,7 +19,7 @@ type CopyTradeOrder struct {
 	ID            uint                 `gorm:"primarykey" json:"id,omitempty"`
 	CreatedAt     time.Time            `json:"-"`
 	UpdatedAt     time.Time            `json:"-"`
-	DeletedAt     sql.NullTime         `gorm:"index" json:"-,omitempty"`
+	DeletedAt     sql.NullTime         `gorm:"index" json:"-"`
 	StatusOrder   CopyTradeOrderStatus `json:"statusOrder,omitempty"`
 	PNL           int                  `json:"pnl,omitempty"`
 	Leverage      int                  `json:"leverage,omitempty"`
@@ -29,6 +29,7 @@ type CopyTradeOrder struct {
 	Year          int                  `json:"year,omitempty"`
 	Month         int                  `json:"month,omitempty"`
 	Week          int                  `json:"week,omitempty"`
+	Roi           float32              `json:"roi"`
 }
 
 func (c *CopyTradeOrder) Insert() error {
@@ -36,7 +37,8 @@ func (c *CopyTradeOrder) Insert() error {
 	c.CreatedAt = time.Now()
 	c.Year = c.UpdatedAt.Year()
 	c.Month = int(c.UpdatedAt.Month())
-	_, c.Week = c.UpdatedAt.ISOWeek()
+	_, c.Week = time.Unix(int64(c.DateCloseUnix), 0).ISOWeek()
+	c.Roi = float32(float64(c.PNL*100*c.Leverage) / float64(c.Margin))
 	return GetDB().Model(c).Create(c).Error
 }
 
@@ -87,5 +89,13 @@ func GetAllCopyTradeOrder(statusOrder int, from, to time.Time, offset, limit int
 		tx = tx.Where(query, args...)
 	}
 	err := tx.Offset(offset).Limit(limit).Order("date_close_unix DESC").Find(&ml).Error
+
+	return ml, err
+}
+
+func OverviewCopyTradeOrder() ([]CopyTradeOrder, error) {
+	ml := make([]CopyTradeOrder, 0)
+	err := GetDB().Raw(`SELECT sum(pnl) as pnl, sum(margin) as margin, avg(roi) as roi, year, month, week
+FROM public.copy_trade_orders group by "year", "month" , "week" order by year, month, week desc  `).Find(&ml).Error
 	return ml, err
 }
