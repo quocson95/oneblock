@@ -55,6 +55,7 @@ func NewPayment(userID int, data *payos.CheckoutResponseDataType) *Payment {
 		AccountNumber: data.AccountNumber,
 		AccountName:   data.AccountName,
 		PaymentLinkId: data.PaymentLinkId,
+		Currency:      data.Currency,
 	}
 	return p
 }

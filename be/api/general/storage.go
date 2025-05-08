@@ -72,7 +72,6 @@ func (h *S3Storage) StorageFile(c echo.Context) error {
 			}
 			c.SetResponse(resp)
 			return c.Blob(http.StatusOK, image.Mime, image.Data)
-
 		}
 	}
 	v, exist := common.CacheDataPool.Get(key)

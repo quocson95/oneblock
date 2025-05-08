@@ -2,6 +2,7 @@ package common
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"gorm.io/gorm"
@@ -16,10 +17,13 @@ type Subscribe struct {
 	PlanId     int            `json:"planId,omitempty"`
 	Plan       *Plan          `gorm:"foreignKey:PlanId" json:"plan,omitempty"`
 	ExpireUnix int64          `json:"expireUnix,omitempty"`
+	ExpireDate string         `json:"expireDate,omitempty"`
 	Active     bool           `json:"active,omitempty"`
 }
 
 func (s *Subscribe) Create() error {
+	t := time.Unix(s.ExpireUnix, 0)
+	s.ExpireDate = fmt.Sprintf("%2d/%2d/%4d", t.Day(), t.Month(), t.Year())
 	return GetDB().Model(s).Create(s).Error
 }
 

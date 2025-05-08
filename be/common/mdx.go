@@ -3,8 +3,10 @@ package common
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
+	"gopkg.in/yaml.v3"
 	"gorm.io/gorm"
 )
 
@@ -16,6 +18,15 @@ const (
 	TypeDocAboutUsMember TypeDoc = 2
 )
 
+type FrontMatter struct {
+	HeroImage   string   `yaml:"heroImage" json:"heroImage,omitempty"`
+	Category    string   `yaml:"category" json:"category,omitempty"`
+	Description string   `yaml:"description" json:"description,omitempty"`
+	PubDate     string   `yaml:"pubDate" json:"pubate,omitempty"`
+	Tags        []string `yaml:"tags" json:"tags,omitempty"`
+	Title       string   `yaml:"title" json:"title,omitempty"`
+}
+
 type Mdx struct {
 	ID          uint         `gorm:"primarykey" json:"id,omitempty"`
 	CreatedAt   time.Time    `json:"created_at,omitempty"`
@@ -26,9 +37,50 @@ type Mdx struct {
 	Url         string       `gorm:"-" json:"url,omitempty"`
 	MD5         string       `gorm:"column:md5" json:"md5,omitempty"`
 	Err         error        `gorm:"-" json:"err,omitempty"`
+	FrontMatter FrontMatter  `gorm:"-" json:"frontMatter,omitempty"`
 	Content     string       `gorm:"-" json:"content,omitempty"`
 	// Publish   bool         `json:"publish,omitempty"`
-	TypeDoc TypeDoc `json:"type_doc,omitempty"`
+	TypeDoc   TypeDoc `json:"type_doc,omitempty"`
+	CreatedBy string  `json:"created_by,omitempty"`
+	UpdatedBy string  `json:"updated_by,omitempty"`
+}
+
+func (m *Mdx) GenFrontMatter() error {
+	if len(m.Content) == 0 {
+		return nil
+	}
+	fm := strings.SplitN(string(m.Content), "---", 3)
+	if len(fm) < 3 {
+		return nil
+	}
+	var meta FrontMatter
+	err := yaml.Unmarshal([]byte(fm[1]), &meta)
+	if err != nil {
+		return err
+	}
+	m.FrontMatter = meta
+	return nil
+}
+
+func (m *Mdx) MergeFrontMatter() error {
+	fm, _ := yaml.Marshal(m.FrontMatter)
+	oriFm := strings.SplitN(string(m.Content), "---", 3)
+	builder := strings.Builder{}
+
+	if len(oriFm) < 3 {
+		builder.WriteString("---\n")
+		builder.WriteString(string(fm))
+		builder.WriteString("---\n")
+		builder.WriteString(m.Content)
+	} else {
+		builder.WriteString("---\n")
+		builder.WriteString(string(fm))
+		builder.WriteString("---\n")
+		builder.WriteString(oriFm[2])
+	}
+	builder.WriteString("\n")
+	m.Content = builder.String()
+	return nil
 }
 
 func (m *Mdx) Insert(db *gorm.DB) error {
@@ -51,6 +103,7 @@ func GetListMdx(typeDoc int, offset, limit int) ([]Mdx, error) {
 		if len(v.DisplayName) == 0 {
 			v.DisplayName = v.Name
 		}
+		v.GenFrontMatter()
 		ml[idx] = v
 	}
 	return ml, tx.Error
@@ -69,6 +122,7 @@ func (m *Mdx) GetById(db *gorm.DB, uint int) error {
 	if len(m.DisplayName) == 0 {
 		m.DisplayName = m.Name
 	}
+	m.GenFrontMatter()
 	return tx.Error
 }
 
@@ -77,5 +131,6 @@ func (m *Mdx) GetByName(db *gorm.DB, name string) error {
 	if len(m.DisplayName) == 0 {
 		m.DisplayName = m.Name
 	}
+	m.GenFrontMatter()
 	return tx.Error
 }

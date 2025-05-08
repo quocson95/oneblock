@@ -28,3 +28,9 @@ func (p *Plan) Create() error {
 func (p *Plan) Get() error {
 	return GetDB().Model(p).First(p).Error
 }
+
+func GetAllPlans() ([]Plan, error) {
+	ml := make([]Plan, 0)
+	err := GetDB().Model(new(Plan)).Find(&ml).Error
+	return ml, err
+}

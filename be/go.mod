@@ -10,6 +10,7 @@ require (
 	github.com/anthonynsimon/bild v0.14.0
 	github.com/aws/aws-sdk-go v1.55.5
 	github.com/bwmarrin/snowflake v0.3.0
+	github.com/chromedp/cdproto v0.0.0-20250120090109-d38428e4d9c8
 	github.com/chromedp/chromedp v0.12.1
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/go-telegram-bot-api/telegram-bot-api v4.6.4+incompatible
@@ -29,6 +30,7 @@ require (
 	golang.org/x/sync v0.10.0
 	golang.org/x/time v0.8.0
 	gopkg.in/telebot.v4 v4.0.0-beta.4
+	gopkg.in/yaml.v3 v3.0.1
 	gorm.io/driver/postgres v1.5.11
 	gorm.io/gorm v1.25.12
 )
@@ -38,7 +40,6 @@ require (
 	github.com/andybalholm/cascadia v1.3.2 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
-	github.com/chromedp/cdproto v0.0.0-20250120090109-d38428e4d9c8 // indirect
 	github.com/chromedp/sysutil v1.1.0 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/dsnet/compress v0.0.1 // indirect

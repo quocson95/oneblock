@@ -164,11 +164,11 @@ func (p *payOS) CreatePayment(c echo.Context) error {
 	query.Set("tk", quickSha1String([]byte(strconv.FormatInt(orderCode, 10)), p.checksumKey))
 	body := payos.CheckoutRequestType{
 		OrderCode: int64(orderCode),
-		Amount:    2000,
+		Amount:    plan.Price,
 		Items: []payos.Item{
 			{
-				Name:     "Mỳ tôm Hảo Hảo ly",
-				Price:    1000,
+				Name:     fmt.Sprintf("Oneblock Plan %d", planId),
+				Price:    plan.Price,
 				Quantity: 1,
 			},
 		},

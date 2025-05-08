@@ -66,6 +66,7 @@ func (d *DashBoardController) Handler(r *echo.Group) {
 	{
 		cfg := config.GetConfig().PayOS
 		NewPayOS(cfg.ClientID, cfg.ApiKey, cfg.ChecksumKey).Handler(r.Group("/payment/payos"))
+		new(PaymentController).Handler(r.Group("/payment"))
 	}
 	// Manager User
 	{

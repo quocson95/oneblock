@@ -1,15 +1,15 @@
 package apiadmin
 
 import (
-	"be/api/general"
+	api "be/api/general"
 	"be/common"
 	"be/database"
-	"bytes"
 	"errors"
 	"io"
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -41,13 +41,47 @@ func (m *MdxAdminController) List(c echo.Context) {
 }
 
 func (m *MdxAdminController) UploadMdx(c echo.Context) error {
-	body, err := io.ReadAll(c.Request().Body)
-	if err != nil {
-		return c.JSON(http.StatusOK, common.Mdx{Err: errors.New("read body failed")})
+	user, ok := c.Get("user").(*common.User)
+	if !ok {
+		return c.NoContent(http.StatusBadRequest)
 	}
-	// buf := &bytes.Buffer{}
-	// zw := gzip.NewWriter(buf)
-	name := c.QueryParam("name")
+	var name string
+	var data string
+	var dispName string
+	// formData.set("title",data.title);
+	// formData.set("category",data.category);
+	// formData.set("description",data.description);
+	// formData.set("heroImage",data.heroImage);
+	// formData.set("tags",data.tags.join(","));
+	// formData.set("dispName", dispName);
+	// formData.set("content", mdxEditorRef.current.getMarkdown())
+	// formData.set("pubDate",new Date().toISOString());
+	zap.L().With(zap.String("heroImage", c.FormValue("heroImage"))).Info("debug")
+	if len(c.FormValue("heroImage")) > 0 {
+		name = c.FormValue("name")
+		mdx := &common.Mdx{
+			Content: c.FormValue("content"),
+			FrontMatter: common.FrontMatter{
+				HeroImage:   c.FormValue("heroImage"),
+				Category:    c.FormValue("category"),
+				Description: c.FormValue("description"),
+				PubDate:     c.FormValue("pubDate"),
+				Tags:        strings.Split(c.FormValue("tags"), ","),
+				Title:       c.FormValue("title"),
+			},
+		}
+		mdx.MergeFrontMatter()
+		data = mdx.Content
+		zap.L().With(zap.String("data", data)).Info("xxxx")
+	} else {
+		body, _ := io.ReadAll(c.Request().Body)
+		data = string(body)
+		name = c.QueryParam("name")
+	}
+
+	// if err != nil {
+	// 	return c.JSON(http.StatusOK, common.Mdx{Err: errors.New("read body failed")})
+	// }
 	preSign, err := common.DefaultS3Hepler.PreSign(http.MethodPut, common.DefaultBucketMdx.String(), name)
 	if err != nil {
 		zap.L().With(zap.Error(err)).Error("presign failed")
@@ -58,19 +92,13 @@ func (m *MdxAdminController) UploadMdx(c echo.Context) error {
 		name = uuid.New().String()
 	}
 	preSign.Url, _ = url.PathUnescape(preSign.Url)
-	client, err := http.NewRequest(http.MethodPut, preSign.Url, bytes.NewReader(body))
+	client, err := http.NewRequest(http.MethodPut, preSign.Url, strings.NewReader(data))
 	if err != nil {
 		zap.L().With(zap.Error(err)).Error("init put failed")
 		return echo.NewHTTPError(http.StatusBadRequest, errors.New("init put failed"))
 	}
-	// go func() {
-	// 	zw.Name = name
-	// 	zw.ModTime = time.Now()
-	// 	zw.Write(body)
-	// 	zw.Close()
-	// }()
 	client.Header.Set("Content-Type", c.Request().Header.Get("Content-Type"))
-	client.ContentLength = int64(len(body))
+	client.ContentLength = int64(len(data))
 	resp, err := common.DefaultHttpClient.Do(client)
 	if err != nil {
 		zap.L().With(zap.Error(err)).Error("put failed")
@@ -87,10 +115,12 @@ func (m *MdxAdminController) UploadMdx(c echo.Context) error {
 	mdx := &common.Mdx{}
 	mdx.GetByName(database.DB, name)
 	mdx.Name = name
-	mdx.DisplayName = c.QueryParam("dispName")
-	mdx.MD5 = common.QuickMd5(body)
+	mdx.DisplayName = dispName
+	mdx.MD5 = common.QuickMd5([]byte(data))
 	mdx.UpdatedAt = time.Now()
+	mdx.TypeDoc = common.TypeDocPublish
 	if mdx.ID == 0 {
+		mdx.CreatedBy = user.Email
 		mdx.Insert(database.DB)
 		s3Sync := &common.S3ObjectSync{
 			Name:     name,
@@ -101,7 +131,13 @@ func (m *MdxAdminController) UploadMdx(c echo.Context) error {
 			zap.L().With(zap.Error(err)).Error("save s3 sync object failed")
 		}
 	} else {
-		mdx.Update(database.DB, (mdx.ID), map[string]interface{}{"md5": mdx.MD5, "updated_at": mdx.UpdatedAt})
+		changes := map[string]interface{}{"md5": mdx.MD5, "updated_at": mdx.UpdatedAt}
+		changes["updated_by"] = user.Email
+		changes["type_doc"] = mdx.TypeDoc
+		if len(mdx.CreatedBy) == 0 {
+			changes["created_by"] = user.Email
+		}
+		mdx.Update(database.DB, (mdx.ID), changes)
 	}
 
 	mdx.GetByName(database.DB, name)

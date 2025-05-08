@@ -96,6 +96,6 @@ func GetAllCopyTradeOrder(statusOrder int, from, to time.Time, offset, limit int
 func OverviewCopyTradeOrder() ([]CopyTradeOrder, error) {
 	ml := make([]CopyTradeOrder, 0)
 	err := GetDB().Raw(`SELECT sum(pnl) as pnl, sum(margin) as margin, avg(roi) as roi, year, month, week
-FROM public.copy_trade_orders group by "year", "month" , "week" order by year, month, week desc  `).Find(&ml).Error
+FROM public.copy_trade_orders group by "year", "month" , "week" order by year, week asc  `).Find(&ml).Error
 	return ml, err
 }

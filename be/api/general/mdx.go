@@ -60,6 +60,8 @@ func (m *MdxController) Get(c echo.Context) error {
 			v.Content = string(content)
 		}
 	}
+	v.GenFrontMatter()
+	v.MergeFrontMatter()
 	return c.JSON(http.StatusOK, v)
 
 }

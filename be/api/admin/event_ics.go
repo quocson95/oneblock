@@ -70,6 +70,7 @@ func (i *ICSAdminController) Add(c echo.Context) error {
 
 	}
 	ics.Insert()
+	_ = common.CacheDataPool.Remove("calendar")
 	return c.NoContent(http.StatusOK)
 }
 
@@ -92,6 +93,7 @@ func (i *ICSAdminController) Edit(c echo.Context) error {
 		return c.NoContent(http.StatusBadRequest)
 	}
 	icsDB.GetById(ics.ID)
+	_ = common.CacheDataPool.Remove("calendar")
 	return c.JSON(http.StatusOK, icsDB)
 }
 
@@ -102,5 +104,6 @@ func (i *ICSAdminController) UpdateCrawInvest(c echo.Context) error {
 		return c.NoContent(http.StatusBadRequest)
 	}
 	job.InsertEventInvestCal(events)
+	_ = common.CacheDataPool.Remove("calendar")
 	return c.JSON(http.StatusOK, events)
 }
