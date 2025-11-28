@@ -91,7 +91,8 @@ services:
       # - GIN_MODE=dev
     volumes:
       - appdata:/home/sondq/appdata
-      - ./libwebp-1.2.0-linux-x86-64/bin/:/app/.bin/webp/
+      # - ./libwebp-1.2.0-linux-x86-64/bin/:/app/.bin/webp/
+      - ./libwebp-1.6.0-linux-x86-64/bin/:/app/.bin/webp/ 
     networks:
       - oneblock_network
 
@@ -263,8 +264,8 @@ services:
       - apparmor:unconfined
     environment:
       LISTEN: /beszel_socket/beszel.sock
-      KEY:  'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEmGdorML2JRPbDAkDxAjGwGkSx+G0Z1P/Zr7nUqt7eV'
-      TOKEN: bb782c4b-607d-4795-bc9c-56ec99a17fcc
+      KEY: ${BESZEL_KEY}
+      TOKEN: ${BESZEL_TOKEN}
       HUB_URL: https://beszel.oneblock.vn
 
   netdata:
@@ -293,19 +294,9 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /run/dbus:/run/dbus:ro
     environment:
-      - NETDATA_CLAIM_TOKEN=mAzEq7b7-OjaMBt3uDHnACnhKcCkBc04Yob3AJMnrXNgH8MwDf1GbTJBbCEzQ1x7hsKGIIIdqhFrY_LylzCMMANcv_oCXHir75n5u8MifImG6JRwOS7mae3NFYloOG7lamvwyzM
+      - NETDATA_CLAIM_TOKEN=${NETDATA_CLAIM_TOKEN}
       - NETDATA_CLAIM_URL=https://app.netdata.cloud
-      - NETDATA_CLAIM_ROOMS=57eda090-8c00-43c1-adfe-8c95111d9fe6
-
-  webcuuhokhancap:
-    container_name: webcuuhokhancap
-    build:
-      context: ./WebCuuHoKhanCap
-    # ports:
-    #   - "8200:80"    
-    restart: always 
-    networks:
-      - oneblock_network
+      - NETDATA_CLAIM_ROOMS=${NETDATA_CLAIM_ROOMS}
 
 volumes:
   appdata:
