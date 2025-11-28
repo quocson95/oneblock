@@ -138,10 +138,13 @@ func (m *MdxAdminController) UploadMdx(c echo.Context) error {
 			changes["created_by"] = user.Email
 		}
 		mdx.Update(database.DB, (mdx.ID), changes)
+		common.MdxCache.Remove(strconv.FormatInt(int64(mdx.ID), 10))
 	}
 
 	mdx.GetByName(database.DB, name)
 	getPresign, _ := common.DefaultS3Hepler.PreSign(http.MethodGet, common.DefaultBucketMdx.String(), name)
 	mdx.Url = getPresign.Url
+	mdx.MergeFrontMatter()
+	common.MdxCache.Add(strconv.FormatInt(int64(mdx.ID), 10), *mdx)
 	return c.JSON(http.StatusOK, mdx)
 }

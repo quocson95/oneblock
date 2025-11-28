@@ -1,6 +1,8 @@
 # Use the official Golang image to create a build artifact.
 # This image has the Go compiler pre-installed.
-FROM golang:1.24 AS builder
+
+
+FROM golang:1.25.4-alpine3.21 AS builder
 
 # Set the Current Working Directory inside the container
 WORKDIR /app
@@ -16,11 +18,11 @@ COPY . .
 ENV GOCACHE=/root/.cache/go-build
 
 # Build the Go app
-RUN --mount=type=cache,target="/root/.cache/go-build" CGO_ENABLED=0 go build -ldflags="-s -w -X 'main.Version=1.0.0' -X 'main.BuildTime=$(date)' -X 'main.Commit=$(git rev-parse HEAD)'" -o oneblock_backend .
+RUN --mount=type=cache,target="/root/.cache/go-build" CGO_ENABLED=0 GOEXPERIMENT=greenteagc go build -ldflags="-s -w -X 'main.Version=1.0.0' -X 'main.BuildTime=$(date)' -X 'main.Commit=$(git rev-parse HEAD)'" -o oneblock_backend .
 RUN chmod +x oneblock_backend
 
 # Start a new stage from scratch
-FROM golang:1.24
+FROM golang:1.25.4-alpine3.21
 # RUN apk add --no-cache tzdata
 # ENV TZ=Asia/Ho_Chi_Minh
 # Set the Current Working Directory inside the container

@@ -2,6 +2,7 @@ package main
 
 import (
 	apiadmin "be/api/admin"
+	apicuuho "be/api/cuuho"
 	"be/api/dashboard"
 	api "be/api/general"
 	"be/bot"
@@ -51,7 +52,7 @@ func main() {
 	go startMetricsHandler(81)
 	config.LoadConfig("config.json")
 	common.DefaultS3Hepler.Init(config.GetConfig().S3Endpoint, "hcm", config.GetConfig().S3AccessKey, config.GetConfig().S3SecretKey)
-	port := 8080
+	port := 80
 	if err := database.InitDB(config.GetConfig().PostgressDsn); err != nil {
 		panic(fmt.Errorf("init db failed: %s", err.Error()))
 	}
@@ -87,6 +88,7 @@ func main() {
 			staticRouter.Static("", "static")
 			staticRouter.Static("/", "static")
 		}
+		new(apicuuho.CuuhoController).Handler(beRouter.Group("/cuuho"))
 		beRouter.Static("/chart", "chart")
 		{
 			dataRouter := beRouter.Group("/data")
@@ -178,57 +180,6 @@ func main() {
 		})
 }
 
-// func startServeAPI(port int, handler func(router *gin.Engine), onErr func(err error), onDone func()) {
-// 	trustOrigin := make(map[string]struct{})
-// 	for _, s := range config.GetConfig().TrustOrigin {
-// 		trustOrigin[s] = struct{}{}
-// 	}
-// 	zap.L().With(zap.Strings("origins", config.GetConfig().TrustOrigin)).Info("trust origin")
-// 	router := gin.Default()
-// 	router.Use(cors.New(cors.Config{
-// 		// AllowOrigins:     []string{"https://*on"},
-// 		AllowMethods:     []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodOptions, http.MethodDelete},
-// 		AllowHeaders:     []string{"Content-Type", "Accept", "user-agent", "referer", "Cookie", "Authorize"},
-// 		ExposeHeaders:    []string{"Content-Length", "Access-Control-Allow-Origin"},
-// 		AllowCredentials: true,
-// 		AllowOriginFunc: func(origin string) bool {
-// 			if _, exist := trustOrigin[origin]; exist {
-// 				return true
-// 			}
-// 			// return exist
-// 			zap.L().With(zap.String("origin", origin)).Error("reject origin")
-// 			return false
-// 		},
-// 		MaxAge: 24 * time.Hour,
-// 	}))
-// 	router.Use(func(c *gin.Context) {
-// 		if !shouldCompress(c.Request) {
-// 			return
-// 		}
-// 		c.Header("Content-Encoding", "br")
-// 		c.Header("Vary", "Accept-Encoding")
-// 		brWriter := brotli.NewWriterV2(c.Writer, brotli.DefaultCompression)
-// 		x := &CompressMidle{c.Writer, brWriter, 0}
-// 		c.Writer = x
-// 		defer func() {
-// 			brWriter.Close()
-// 			c.Header("Content-Length", strconv.Itoa(x.Length))
-// 		}()
-// 		c.Next()
-// 	})
-// 	if gin.Mode() == gin.ReleaseMode {
-// 		router.SetTrustedProxies(nil)
-// 	}
-// 	handler(router)
-// 	zap.L().With(zap.Int("port", port)).Info("start server")
-// 	err := router.Run(fmt.Sprintf(":%d", port))
-// 	if err != nil && onErr != nil {
-// 		onErr(err)
-// 		return
-// 	}
-// 	onDone()
-// }
-
 func startEchoServeAPI(port int, handler func(router *echo.Echo), onErr func(err error), onDone func()) {
 	trustOrigin := make(map[string]struct{})
 	for _, s := range config.GetConfig().TrustOrigin {
@@ -237,35 +188,8 @@ func startEchoServeAPI(port int, handler func(router *echo.Echo), onErr func(err
 	zap.L().With(zap.Strings("origins", config.GetConfig().TrustOrigin)).Info("trust origin")
 	router := echo.New()
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	router.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
-		LogStatus:   true,
-		LogURI:      true,
-		LogError:    true,
-		LogLatency:  true,
-		HandleError: true, // forwards error to the global error handler, so it can decide appropriate status code
-		LogRemoteIP: true,
-		LogValuesFunc: func(c echo.Context, v middleware.RequestLoggerValues) error {
-			if v.Error == nil {
-				logger.LogAttrs(context.Background(), slog.LevelInfo,
-					"REQUEST",
-					slog.String("latency", v.Latency.String()),
-					slog.String("uri", v.URI),
-					slog.Int("status", v.Status),
-					slog.String("ip", v.RemoteIP),
-				)
-			} else {
-				logger.LogAttrs(context.Background(), slog.LevelError, "REQUEST_ERROR",
-					slog.String("latency", v.Latency.String()),
-					slog.String("uri", v.URI),
-					slog.Int("status", v.Status),
-					slog.String("ip", v.RemoteIP),
-					slog.String("err", v.Error.Error()),
-				)
-			}
-			return nil
-		},
-	}))
-	router.Use(middleware.RateLimiter(middleware.NewRateLimiterMemoryStore(rate.Limit(20))))
+	router.Use(middlewareLog(logger))
+	router.Use(middleware.RateLimiter(middleware.NewRateLimiterMemoryStore(rate.Limit(200))))
 	router.Use(middleware.Recover())
 	router.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		// AllowOrigins: []string{"https://labstack.com", "https://labstack.net"},
@@ -287,7 +211,7 @@ func startEchoServeAPI(port int, handler func(router *echo.Echo), onErr func(err
 	router.Use(middleware.GzipWithConfig(middleware.GzipConfig{
 		Level: 5,
 		Skipper: func(c echo.Context) bool {
-			return c.Response().Header().Get("Content-Type") == "image/png"
+			return strings.HasPrefix(c.Response().Header().Get("Content-Type"), "image/")
 		},
 	}))
 	handler(router)
@@ -341,4 +265,34 @@ func createPlan() {
 	}
 	plan.PriceDisp = fmt.Sprintf("%d %s", plan.Price, plan.Currency)
 	plan.Create()
+}
+
+func middlewareLog(logger *slog.Logger) echo.MiddlewareFunc {
+	return middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
+		LogStatus:   true,
+		LogURI:      true,
+		LogError:    true,
+		LogLatency:  true,
+		HandleError: true, // forwards error to the global error handler, so it can decide appropriate status code
+		LogRemoteIP: true,
+		LogValuesFunc: func(c echo.Context, v middleware.RequestLoggerValues) error {
+			attrs := []slog.Attr{slog.String("latency", v.Latency.String()),
+				slog.String("uri", v.URI),
+				slog.Int("status", v.Status),
+				slog.String("ip", v.RemoteIP),
+				slog.String("content-encoding", strings.Join(v.Headers["content-encoding"], ","))}
+			if v.Error == nil {
+				logger.LogAttrs(context.Background(), slog.LevelInfo,
+					"REQUEST",
+					attrs...,
+				)
+			} else {
+				attrs = append(attrs, slog.String("err", v.Error.Error()))
+				logger.LogAttrs(context.Background(), slog.LevelError, "REQUEST_ERROR",
+					attrs...,
+				)
+			}
+			return nil
+		},
+	})
 }

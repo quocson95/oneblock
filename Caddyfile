@@ -1,0 +1,178 @@
+{
+	metrics {
+	}
+	admin :2019
+}
+
+grafana.oneblock.vn {
+	encode zstd gzip
+	# Root UI
+	handle {
+		reverse_proxy grafana:3000
+	}
+}
+
+# ==============================
+# api.oneblock.vn
+# ==============================
+# Explicit :80 -> :443 redirect (mirrors your 301)
+http://api.oneblock.vn {
+	redir https://{host}{uri} 301
+}
+
+api.oneblock.vn {
+	encode zstd gzip
+	request_body {
+		max_size 100MB
+	}
+
+	handle {
+		reverse_proxy backend:80
+	}
+	# Fallback 404 for anything else
+	handle {
+		respond "404 - oneblock api here" 404
+	}
+
+	# (Caddy manages TLS/redirects automatically)
+}
+
+# ==============================
+# dns.oneblock.vn  (AdGuard Home UI + DoH)
+# ==============================
+
+# Explicit :80 -> :443 redirect (mirrors your 301)
+http://dns.oneblock.vn {
+	redir https://{host}{uri} 301
+}
+
+dns.oneblock.vn {
+	encode zstd gzip
+	request_body {
+		max_size 100MB
+	}
+
+	# --- DoH endpoints (NO interception, direct passthrough to https://103.82.133.178:2443/dns-query)
+	@doh path "/dns-query" "/.well-known/dns-query"
+	handle @doh {
+		reverse_proxy https://adguardhome:443 {
+			header_up Host {host}
+			transport http {
+				# If your 2443 cert is self-signed/local, skip verification.
+				# Remove this if you terminate TLS properly at 2443.
+				tls_insecure_skip_verify
+			}
+		}
+	}
+
+	# --- Web UI (everything else goes to AdGuard HTTP on :180)
+	handle {
+		reverse_proxy adguardhome:80 {
+			# Stream responses (roughly analogous to "proxy_buffering off")
+			flush_interval 0
+		}
+	}
+
+	# --- Replace upstream 404 body with your custom text (but not for DoH block above)
+	@dns_ui_404 expression {http.reverse_proxy.status_code} == 404
+	# handle_response @dns_ui_404 {
+	# 	respond "404 - oneblock dns here " 404
+	# }
+
+	# HTTP/3, OCSP, renewals handled automatically by Caddy
+}
+
+# ==============================
+# dnsmon.oneblock.vn (terminal UI + WebSocket)
+# ==============================
+dnsmon.oneblock.vn {
+	encode zstd gzip
+
+	# Root UI
+	handle {
+		reverse_proxy adguardian1:7681
+	}
+
+	# WebSocket passthrough (Caddy auto-sets Upgrade/Connection headers)
+	handle_path /ws* {
+		reverse_proxy adguardian1:7681 {
+			# optional long timeouts akin to nginx proxy_read_timeout
+			transport http {
+				read_buffer 0
+				dial_timeout 30s
+				response_header_timeout 3600s
+			}
+		}
+	}
+}
+
+# ==============================
+# fund.oneblock.vn (FE+BE split)
+# ==============================
+fund.oneblock.vn {
+	encode zstd gzip
+	# request_body { max_size 100MB }
+
+	# API to fundbe :6060
+	handle_path /api* {
+		reverse_proxy 103.82.133.178:6060
+	}
+
+	# FE + callbacks to fundfe :6062
+	handle_path /auth/callback* {
+		reverse_proxy 103.82.133.178:6062
+	}
+	handle {
+		reverse_proxy 103.82.133.178:6062
+	}
+}
+
+# ==============================
+# dev.oneblock.vn (landingcms)
+# ==============================
+dev.oneblock.vn {
+	encode zstd gzip
+	reverse_proxy 103.82.133.178:8100
+}
+
+# ==============================
+# dashboard.oneblock.vn (customer)
+# ==============================
+dashboard.oneblock.vn {
+	encode zstd gzip
+	# request_body { max_size 100MB }
+
+	# All paths go to :9000 (including /api and /auth/callback)
+	handle {
+		reverse_proxy 103.82.133.178:9000
+	}
+}
+
+portainer.oneblock.vn {
+	encode zstd gzip
+
+	reverse_proxy https://portainer:9443 {
+		# pass the original Host (optional but nice)
+		header_up Host {host}
+
+		# Portainer's built-in cert is self-signed → skip verify
+		transport http {
+			tls_insecure_skip_verify
+		}
+	}
+}
+
+code.oneblock.vn {
+	encode zstd gzip
+	reverse_proxy 103.82.133.178:8888
+}
+
+beszel.oneblock.vn {
+	encode zstd gzip
+	reverse_proxy beszel:8090
+}
+
+cuuho.oneblock.vn {
+	encode zstd gzip
+	reverse_proxy webcuuhokhancap:80
+}

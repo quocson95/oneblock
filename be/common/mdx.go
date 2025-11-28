@@ -6,11 +6,14 @@ import (
 	"strings"
 	"time"
 
+	lru "github.com/hashicorp/golang-lru/v2"
 	"gopkg.in/yaml.v3"
 	"gorm.io/gorm"
 )
 
 type TypeDoc int
+
+var MdxCache, _ = lru.New[string, Mdx](1000)
 
 const (
 	TypeDocDraf                  = 0

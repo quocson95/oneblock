@@ -173,7 +173,7 @@ func (h *S3Storage) UploadStorageFile(c echo.Context) error {
 		zap.L().With(zap.Error(err)).Error("init put failed")
 		return c.JSON(http.StatusOK, common.Mdx{Err: errors.New("init put failed")})
 	}
-	client.Header.Set("Content-Type", c.Request().Header.Get("Content-Type"))
+	client.Header.Set("Content-Type", bodyType)
 	if len(client.Header.Get("Content-Type")) == 0 {
 		client.Header.Set("Content-Type", http.DetectContentType(body))
 	}

@@ -1,8 +1,6 @@
 module be
 
-go 1.23
-
-toolchain go1.23.1
+go 1.24.0
 
 require (
 	github.com/PuerkitoBio/goquery v1.10.0
@@ -27,7 +25,7 @@ require (
 	go.uber.org/zap v1.27.0
 	golang.org/x/image v0.18.0
 	golang.org/x/oauth2 v0.24.0
-	golang.org/x/sync v0.10.0
+	golang.org/x/sync v0.18.0
 	golang.org/x/time v0.8.0
 	gopkg.in/telebot.v4 v4.0.0-beta.4
 	gopkg.in/yaml.v3 v3.0.1
@@ -66,6 +64,7 @@ require (
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/nickalie/go-binwrapper v0.0.0-20190114141239-525121d43c84 // indirect
 	github.com/nwaples/rardecode v1.1.3 // indirect
+	github.com/panjf2000/ants/v2 v2.11.3 // indirect
 	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
 	github.com/prometheus/client_model v0.6.1 // indirect
 	github.com/prometheus/common v0.55.0 // indirect
