@@ -36,7 +36,7 @@ func init() {
 
 type S3Storage struct{}
 
-var wlBucket = map[string]struct{}{"cms-images": {}, common.DefaultBucketMdx.String(): {}}
+var wlBucket = map[string]struct{}{"cms-images": {}, common.DefaultBucketMdx.String(): {}, "substack/pdfs": {}, "substack": {}}
 
 func (h *S3Storage) Handler(c *echo.Group) {
 	c.GET("", h.StorageFile)
