@@ -9,7 +9,7 @@ import (
 	lru "github.com/hashicorp/golang-lru/v2"
 )
 
-var CacheDataPool, _ = lru.New[string, CacheData](2048)
+var CacheDataPool, _ = lru.New[string, *CacheData](2048)
 
 var CacheUser, _ = lru.New[string, User](1024)
 
@@ -21,7 +21,7 @@ type CacheData struct {
 	ContentEncoding string
 	CreateAt        time.Time
 	InvalidAt       time.Time
-	Resize          bool
+	Resized         bool
 }
 
 func (c *CacheData) Compress() {

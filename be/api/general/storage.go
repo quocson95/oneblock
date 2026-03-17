@@ -56,43 +56,47 @@ func (h *S3Storage) StorageFile(c echo.Context) error {
 		return h.StorageListObject(c)
 
 	}
-	key := bucket + name
-	if w, _ := strconv.Atoi(c.QueryParam("w")); w > 0 {
-		keyW := fmt.Sprintf("%s_w%d", key, w)
-		image, exist := common.CacheDataPool.Get(keyW)
-		if exist {
-			header := image.Header
-			header["Cache-Control"] = "public, max-age=86400"
-			header["Expires"] = image.InvalidAt.Format(http.TimeFormat)
-			header["Last-Modified"] = image.CreateAt.Format(http.TimeFormat)
-			header["Content-Encoding"] = image.ContentEncoding
-			resp := c.Response()
-			for k, v := range header {
-				resp.Header().Set(k, v)
-			}
-			c.SetResponse(resp)
-			return c.Blob(http.StatusOK, image.Mime, image.Data)
-		}
-	}
-	v, exist := common.CacheDataPool.Get(key)
-	var preSign *common.S3PreSign
-	var err error
-	if noCache || !exist {
-		zap.L().With(zap.String("bucket", bucket)).With(zap.String("name", name)).Info("not found cache image")
-		preSign, err = common.DefaultS3Hepler.PreSign(http.MethodGet, bucket, name)
+	if noCache {
+		preSign, err := common.DefaultS3Hepler.PreSign(http.MethodGet, bucket, name)
 		if err != nil {
 			zap.L().With(zap.Error(err)).With(zap.String("bucket", bucket)).With(zap.String("name", name)).Error("presign failed")
 			return echo.NewHTTPError(http.StatusBadRequest, "presign failed")
-
 		}
+		return c.Redirect(http.StatusFound, preSign.Url)
+	}
+	key := bucket + name
+	if w, _ := strconv.Atoi(c.QueryParam("w")); w > 0 {
+		key = fmt.Sprintf("%s_w%d", key, w)
+	}
+	image, exist := common.CacheDataPool.Get(key)
+	if exist {
+		header := image.Header
+		header["Cache-Control"] = "public, max-age=86400"
+		header["Expires"] = image.InvalidAt.Format(http.TimeFormat)
+		header["Last-Modified"] = image.CreateAt.Format(http.TimeFormat)
+		header["Content-Encoding"] = image.ContentEncoding
+		resp := c.Response()
+		for k, v := range header {
+			resp.Header().Set(k, v)
+		}
+		c.SetResponse(resp)
+		return c.Blob(http.StatusOK, image.Mime, image.Data)
+	}
+
+	// data no exist
+	zap.L().With(zap.String("bucket", bucket)).With(zap.String("name", name)).Info("[not found] fetch and cache data")
+	preSign, err := common.DefaultS3Hepler.PreSign(http.MethodGet, bucket, name)
+	if err != nil {
+		zap.L().With(zap.Error(err)).With(zap.String("bucket", bucket)).With(zap.String("name", name)).Error("presign failed")
+		return echo.NewHTTPError(http.StatusBadRequest, "presign failed")
+	}
+	common.AddTaskToWorker(func() {
 		resp, cleanup, err := common.QuickGetHttp(http.MethodGet, preSign.Url, nil)
 		defer cleanup()
 		if err != nil {
 			zap.L().With(zap.Error(err)).With(zap.String("bucket", bucket)).With(zap.String("name", name)).Error("get content presign failed")
-			return echo.NewHTTPError(http.StatusBadRequest, "presign failed")
-
 		}
-		image := common.CacheData{
+		data := &common.CacheData{
 			ContentLength: resp.ContentLength,
 			Mime:          resp.Header.Get("content-type"),
 			Header:        make(map[string]string),
@@ -103,36 +107,18 @@ func (h *S3Storage) StorageFile(c echo.Context) error {
 			if len(v) == 0 {
 				continue
 			}
-			image.Header[k] = v[0]
+			data.Header[k] = v[0]
 		}
-		image.Data, _ = io.ReadAll(resp.Body)
-		common.CacheDataPool.Add(key, image)
-		v = image
-		exist = true
+		data.Data, _ = io.ReadAll(resp.Body)
+		common.CacheDataPool.Add(bucket+name, data)
 		if w, _ := strconv.Atoi(c.QueryParam("w")); w > 0 {
-			key = fmt.Sprintf("%s_w%d", key, w)
-			common.CacheDataPool.Add(key, image)
+			// key = fmt.Sprintf("%s_w%d", key, w)
+			common.CacheDataPool.Add(key, data)
 			job.AddCompressImage(key, w)
 		}
-	}
+	})
+	return c.Redirect(http.StatusFound, preSign.Url)
 
-	if !exist {
-		return c.Redirect(http.StatusFound, preSign.Url)
-	}
-
-	image := v
-	header := image.Header
-	header["Cache-Control"] = "public, max-age=2592000"
-	header["Expires"] = image.InvalidAt.Format(http.TimeFormat)
-	header["Last-Modified"] = image.CreateAt.Format(http.TimeFormat)
-	header["Content-Encoding"] = image.ContentEncoding
-	// c.DataFromReader(http.StatusOK, int64(image.ContentLength), image.Mime, bytes.NewBuffer(image.Data), header)
-	resp := c.Response()
-	for k, v := range header {
-		resp.Header().Set(k, v)
-	}
-	c.SetResponse(resp)
-	return c.Blob(http.StatusOK, image.Mime, image.Data)
 }
 
 func (h *S3Storage) UploadStorageFile(c echo.Context) error {

@@ -25,7 +25,11 @@ api.oneblock.vn {
 	request_body {
 		max_size 100MB
 	}
-
+	# ==============================
+	# handle {
+	# 	reverse_proxy 103.82.133.178:8080
+	# }
+	# ==============================
 	handle {
 		reverse_proxy backend:80
 	}
@@ -106,59 +110,11 @@ dnsmon.oneblock.vn {
 	}
 }
 
-# ==============================
-# fund.oneblock.vn (FE+BE split)
-# ==============================
-fund.oneblock.vn {
-	encode zstd gzip
-	# request_body { max_size 100MB }
-
-	# API to fundbe :6060
-	handle_path /api* {
-		reverse_proxy 103.82.133.178:6060
-	}
-
-	# FE + callbacks to fundfe :6062
-	handle_path /auth/callback* {
-		reverse_proxy 103.82.133.178:6062
-	}
-	handle {
-		reverse_proxy 103.82.133.178:6062
-	}
-}
-
-# ==============================
-# dev.oneblock.vn (landingcms)
-# ==============================
-dev.oneblock.vn {
-	encode zstd gzip
-	reverse_proxy 103.82.133.178:8100
-}
-
-# ==============================
-# dashboard.oneblock.vn (customer)
-# ==============================
-dashboard.oneblock.vn {
-	encode zstd gzip
-	# request_body { max_size 100MB }
-
-	# All paths go to :9000 (including /api and /auth/callback)
-	handle {
-		reverse_proxy 103.82.133.178:9000
-	}
-}
-
 portainer.oneblock.vn {
 	encode zstd gzip
 
-	reverse_proxy https://portainer:9443 {
-		# pass the original Host (optional but nice)
-		header_up Host {host}
-
-		# Portainer's built-in cert is self-signed → skip verify
-		transport http {
-			tls_insecure_skip_verify
-		}
+	handle {
+		reverse_proxy portainer:9000
 	}
 }
 
@@ -170,9 +126,4 @@ code.oneblock.vn {
 beszel.oneblock.vn {
 	encode zstd gzip
 	reverse_proxy beszel:8090
-}
-
-cuuho.oneblock.vn {
-	encode zstd gzip
-	reverse_proxy webcuuhokhancap:80
 }

@@ -18,6 +18,7 @@ require (
 	github.com/labstack/echo-jwt/v4 v4.3.0
 	github.com/labstack/echo/v4 v4.13.3
 	github.com/nickalie/go-webpbin v0.0.0-20220110095747-f10016bf2dc1
+	github.com/panjf2000/ants/v2 v2.11.3
 	github.com/payOSHQ/payos-lib-golang v1.0.7
 	github.com/prometheus/client_golang v1.20.5
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
@@ -64,7 +65,6 @@ require (
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/nickalie/go-binwrapper v0.0.0-20190114141239-525121d43c84 // indirect
 	github.com/nwaples/rardecode v1.1.3 // indirect
-	github.com/panjf2000/ants/v2 v2.11.3 // indirect
 	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
 	github.com/prometheus/client_model v0.6.1 // indirect
 	github.com/prometheus/common v0.55.0 // indirect

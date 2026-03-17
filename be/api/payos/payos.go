@@ -1,4 +1,4 @@
-package dashboard
+package payos
 
 import (
 	"be/bot"
@@ -30,10 +30,12 @@ import (
 
 var node *snowflake.Node
 var tmpl *template.Template
+var tmplTroll *template.Template
 
 func init() {
 	node, _ = snowflake.NewNode(1)
 	tmpl = template.Must(template.ParseFiles("static/payment_tele_template.html"))
+	tmplTroll = template.Must(template.ParseFiles("static/payment_tele_template_troll.html"))
 }
 
 func generateOrderCode() int64 {
@@ -143,9 +145,7 @@ func (p *payOS) WebHook(c echo.Context) error {
 
 func (p *payOS) CreatePayment(c echo.Context) error {
 	user := security.GetUserCtx(c)
-	if user == nil {
-		return c.NoContent(http.StatusBadRequest)
-	}
+
 	planId, _ := strconv.Atoi(c.QueryParam("id"))
 	if planId <= 0 {
 		return c.NoContent(http.StatusBadRequest)
@@ -162,6 +162,10 @@ func (p *payOS) CreatePayment(c echo.Context) error {
 	orderCode := generateOrderCode()
 	query.Set("orderCode", strconv.FormatInt(orderCode, 10))
 	query.Set("tk", quickSha1String([]byte(strconv.FormatInt(orderCode, 10)), p.checksumKey))
+	userEmail := ""
+	if user != nil {
+		userEmail = user.Email
+	}
 	body := payos.CheckoutRequestType{
 		OrderCode: int64(orderCode),
 		Amount:    plan.Price,
@@ -175,7 +179,7 @@ func (p *payOS) CreatePayment(c echo.Context) error {
 		Description: fmt.Sprintf("Đơn hàng %d", orderCode),
 		ReturnUrl:   "https://api.oneblock.vn/be/dashboard/payos/payment/return?" + query.Encode(),
 		CancelUrl:   "https://api.oneblock.vn/be/dashboard/payos/payment/cancel?" + query.Encode(),
-		BuyerEmail:  &user.Email,
+		BuyerEmail:  &userEmail,
 	}
 	cdCheckout := 20 * time.Minute
 	expiredAt := int(time.Now().Add(cdCheckout).Add(1 * time.Minute).Unix())
@@ -191,8 +195,12 @@ func (p *payOS) CreatePayment(c echo.Context) error {
 	// 	zap.L().With(zap.Error(err)).Error("generate qr code failed")
 	// 	return c.NoContent(http.StatusBadRequest)
 	// }
-	payment := common.NewPayment(int(user.ID), data)
-	payment.CustomerEmail = user.Email
+	userId := 0
+	if user != nil {
+		userId = int(user.ID)
+	}
+	payment := common.NewPayment(userId, data)
+	payment.CustomerEmail = userEmail
 	payment.QRCode = data.QRCode
 	payment.CheckoutUrl = data.CheckoutUrl
 	payment.Currency = data.Currency
@@ -229,7 +237,11 @@ func (p *payOS) GetPaymentInfo(c echo.Context) error {
 	orderId := c.Param("id")
 	orderCode, _ := strconv.Atoi(orderId)
 	payment := &common.Payment{}
-	payment.FindByOrderCode(int(user.ID), int64(orderCode))
+	userId := 0
+	if user != nil {
+		userId = int(user.ID)
+	}
+	payment.FindByOrderCode(userId, int64(orderCode))
 	payment.CdCheckoutBySec -= time.Now().Unix() - payment.CreatedAt.Unix()
 	return c.JSON(http.StatusOK, payment)
 }
@@ -237,7 +249,8 @@ func (p *payOS) GetPaymentInfo(c echo.Context) error {
 func (p *payOS) sendTeleNoti(payment *common.Payment) {
 	// msg:=fmt.Sprintf("")
 	buff := bytes.Buffer{}
-	err := tmpl.Execute(&buff, payment)
+	// var err error
+	err := tmplTroll.Execute(&buff, payment)
 	if err != nil {
 		zap.L().With(zap.Error(err)).Error("parse template send noti tele failed")
 		return

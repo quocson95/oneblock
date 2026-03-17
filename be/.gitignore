@@ -2,3 +2,8 @@
 config.json
 routes.json
 vendor
+.bin/*
+*.pem
+.env
+**besel_data/**
+bin/**

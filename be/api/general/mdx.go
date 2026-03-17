@@ -6,15 +6,13 @@ import (
 	"io"
 	"net/http"
 	"strconv"
-	"sync"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
-	"golang.org/x/sync/errgroup"
 )
 
 type MdxController struct {
-	mtPrefetchMdx sync.Mutex
 }
 
 func (m *MdxController) Handler(g *echo.Group) {
@@ -38,30 +36,22 @@ func (m *MdxController) List(c echo.Context) error {
 	}
 	typeDoc, _ := strconv.Atoi(typeDocStr)
 	ml, _ := common.GetListMdx(typeDoc, offset, limit)
-	go func() {
-		m.mtPrefetchMdx.Lock()
-
-		g := errgroup.Group{}
-		g.SetLimit(10)
-		for _, v := range ml {
-			idStr := strconv.FormatInt(int64(v.ID), 10)
-			if common.MdxCache.Contains(idStr) {
-				continue
-			}
-			g.Go(func() error {
-				_, err := m.fecthMdx(idStr, true)
-				logger := zap.L().With(zap.Error(err)).With(zap.String("id", idStr))
-				if err != nil {
-					logger.Error("[failed] prefetch mdx ")
-				} else {
-					logger.Info("[success] prefetch mdx")
-				}
-				return nil
-			})
+	for _, v := range ml {
+		idStr := strconv.FormatInt(int64(v.ID), 10)
+		if common.MdxCache.Contains(idStr) {
+			continue
 		}
-		g.Wait()
-		m.mtPrefetchMdx.Unlock()
-	}()
+		common.AddTaskToWorker(func() {
+			tStart := time.Now
+			_, err := m.fecthMdx(idStr, true)
+			logger := zap.L().With(zap.Error(err)).With(zap.String("id", idStr)).With(zap.Duration("latency", time.Since(tStart())))
+			if err != nil {
+				logger.Error("[failed] prefetch mdx ")
+			} else {
+				logger.Info("[success] prefetch mdx")
+			}
+		})
+	}
 	return c.JSON(http.StatusOK, ml)
 }
 
@@ -96,10 +86,9 @@ func (m *MdxController) fecthMdx(id string, loadContent bool) (common.Mdx, error
 		}
 	}
 
+	zap.L().With(zap.String("id", id)).With(zap.String("name", v.Name)).Info("[fetching] mdx data from s3")
 	preSign, err := common.DefaultS3Hepler.PreSign(http.MethodGet, common.DefaultBucketMdx.String(), v.Name)
 	if err != nil {
-		// zap.L().With(zap.String("id", id)).With(zap.String("name", v.Name)).With(zap.Error(err)).Error("presign failed")
-		// return c.NoContent(http.StatusOK)
 		return v, errors.Join(err, errors.New("name "+v.Name))
 	}
 	v.Url = preSign.Url

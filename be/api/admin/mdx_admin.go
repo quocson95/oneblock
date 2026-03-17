@@ -121,7 +121,11 @@ func (m *MdxAdminController) UploadMdx(c echo.Context) error {
 	mdx.TypeDoc = common.TypeDocPublish
 	if mdx.ID == 0 {
 		mdx.CreatedBy = user.Email
-		mdx.Insert(database.DB)
+		err := mdx.Insert(database.DB)
+		if err != nil {
+			zap.L().With(zap.Error(err)).Error("insert db failed")
+			return c.JSON(http.StatusOK, common.Mdx{Err: errors.New("insert db failed")})
+		}
 		s3Sync := &common.S3ObjectSync{
 			Name:     name,
 			Bucket:   common.DefaultBucketMdx.String(),
@@ -145,6 +149,6 @@ func (m *MdxAdminController) UploadMdx(c echo.Context) error {
 	getPresign, _ := common.DefaultS3Hepler.PreSign(http.MethodGet, common.DefaultBucketMdx.String(), name)
 	mdx.Url = getPresign.Url
 	mdx.MergeFrontMatter()
-	common.MdxCache.Add(strconv.FormatInt(int64(mdx.ID), 10), *mdx)
+	common.MdxCache.Remove(strconv.FormatInt(int64(mdx.ID), 10))
 	return c.JSON(http.StatusOK, mdx)
 }

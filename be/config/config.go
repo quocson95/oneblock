@@ -26,6 +26,7 @@ type Redis struct {
 }
 
 type config struct {
+	Port                  int           `json:"port"`
 	ApiEthKey             string        `json:"api_eth_key,omitempty"`
 	S3Endpoint            string        `json:"s3_endpoint,omitempty"`
 	S3AccessKey           string        `json:"s3_access_key,omitempty"`

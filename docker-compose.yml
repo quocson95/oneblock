@@ -7,7 +7,7 @@ services:
     
   caddy:
     container_name: caddy
-    image: caddy:2.10.2
+    image: caddy:2.10.2-alpine
     restart: unless-stopped
     ports:
       - "80:80"
@@ -109,6 +109,7 @@ services:
 
   db:
     image: postgres:17.2
+    # container_name: postgres
     restart: always
     # set shared memory limit when using docker-compose
     shm_size: 512mb
@@ -119,7 +120,7 @@ services:
     #    tmpfs:
     #      size: 134217728 # 128*2^20 bytes = 128Mb
     environment:
-      POSTGRES_PASSWORD: 
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
         - dbdata:/var/lib/postgresql/data
     ports:
@@ -131,7 +132,7 @@ services:
     image: postgres:17.2
     restart: unless-stopped
     environment:
-      PGPASSWORD: oneblock_db_pass                # so pg_dump won't prompt
+      PGPASSWORD: ${POSTGRES_PASSWORD}                # so pg_dump won't prompt
       PGUSER: postgres
       PGDATABASE: oneblock
       PGHOST: 103.82.133.178
@@ -148,7 +149,7 @@ services:
           echo "Created $${file}"
           # keep last 7 days locally
           # find /backups -type f -name "backup-*.sql.gz" -mtime +7 -delete
-          sleep 3600
+          sleep 86400
         done
       '
 
@@ -182,8 +183,52 @@ services:
         done
       '
 
+  rclone-sync-worker:
+    image: rclone/rclone:latest
+    container_name: s3-cross-endpoint-sync
+    environment:
+      # --- Cấu hình Nguồn (Source) ---
+      - RCLONE_CONFIG_MYSOURCE_TYPE=s3
+      - RCLONE_CONFIG_MYSOURCE_PROVIDER=Other
+      - RCLONE_CONFIG_MYSOURCE_ENV_AUTH=true
+      - RCLONE_CONFIG_MYSOURCE_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - RCLONE_CONFIG_MYSOURCE_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - RCLONE_CONFIG_MYSOURCE_ENDPOINT=${S3_ENDPOINT}
+      
+      # --- Cấu hình Đích (Destination) ---
+      - RCLONE_CONFIG_MYDEST_TYPE=s3
+      - RCLONE_CONFIG_MYDEST_PROVIDER=Other
+      - RCLONE_CONFIG_MYDEST_ENV_AUTH=true
+      - RCLONE_CONFIG_MYDEST_ACCESS_KEY_ID=${S3_DST_ACCESS_KEY}
+      - RCLONE_CONFIG_MYDEST_SECRET_ACCESS_KEY=${S3_DST_SECRET_KEY}
+      - RCLONE_CONFIG_MYDEST_ENDPOINT=${S3_DST_ENDPOINT}
+      
+    entrypoint: 
+      - /bin/sh
+      - -c
+      - |
+        echo "Starting Global S3 Sync Service..."
+        while true; do
+          echo "[$(date)] Starting FULL sync from Endpoint A to Endpoint B..."
+          
+          # LỆNH QUAN TRỌNG:
+          # mysource: (có dấu hai chấm) nghĩa là root của source
+          # mydest: (có dấu hai chấm) nghĩa là root của dest
+          # --create-empty-src-dirs: Đảm bảo copy cả các bucket rỗng
+          # --transfers 16: Tăng tốc độ (copy 16 file cùng lúc)
+          
+          rclone sync mysource: mydest: \
+            --create-empty-src-dirs \
+            --transfers 16 \
+            --progress
+          
+          echo "[$(date)] Sync completed. Sleeping for 24 hour..."
+          sleep 86400
+        done
+    restart: unless-stopped
+
   adguardhome:
-    image: adguard/adguardhome:v0.107.69
+    image: adguard/adguardhome:v0.107.71
     container_name: adguardhome
     restart: unless-stopped
     networks:
@@ -193,6 +238,7 @@ services:
       - adguardhome:/opt/adguardhome/conf
       - ./privkey.pem:/opt/adguardhome/ssl/privkey.pem
       - ./fullchain.pem:/opt/adguardhome/ssl/fullchain.pem
+      - caddy_data:/shared/caddy-data:ro
     ports:
       # - "53:53/tcp"
       # - "53:53/udp"
@@ -215,6 +261,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 15s
+    depends_on: [caddy]      
 
   adguardian1:
     image: sdjnmxd/adguardian-web
@@ -268,35 +315,103 @@ services:
       TOKEN: ${BESZEL_TOKEN}
       HUB_URL: https://beszel.oneblock.vn
 
-  netdata:
-    image: netdata/netdata:stable
-    container_name: netdata
-    pid: host
-    network_mode: host
+  portainer:
+    image: portainer/portainer-ee:lts
+    container_name: portainer
     restart: unless-stopped
-    cap_add:
-      - SYS_PTRACE
-      - SYS_ADMIN
     security_opt:
-      - apparmor:unconfined
+      - no-new-privileges:true
     volumes:
-      - netdataconfig:/etc/netdata
-      - netdatalib:/var/lib/netdata
-      - netdatacache:/var/cache/netdata
-      - /:/host/root:ro,rslave
-      - /etc/passwd:/host/etc/passwd:ro
-      - /etc/group:/host/etc/group:ro
       - /etc/localtime:/etc/localtime:ro
-      - /proc:/host/proc:ro
-      - /sys:/host/sys:ro
-      - /etc/os-release:/host/etc/os-release:ro
-      - /var/log:/host/var/log:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - /run/dbus:/run/dbus:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+    # ports:
+      # - "9000:9000"
+    networks:
+      - oneblock_network
+
+  cowrie:
+    image: cowrie/cowrie
+    # build:
+    #   context: ./honeyspot/cowrie
+    container_name: cowrie
+    restart: unless-stopped
     environment:
-      - NETDATA_CLAIM_TOKEN=${NETDATA_CLAIM_TOKEN}
-      - NETDATA_CLAIM_URL=https://app.netdata.cloud
-      - NETDATA_CLAIM_ROOMS=${NETDATA_CLAIM_ROOMS}
+      # Configure Cowrie to use the PostgreSQL output plugin
+      COWRIE_OUTPUT_POSTGRES_ENABLED: "yes"
+      COWRIE_OUTPUT_POSTGRES_HOST: ${POSTGRES_HOST} # Service name in docker-compose
+      COWRIE_OUTPUT_POSTGRES_DATABASE: "cowrie"
+      COWRIE_OUTPUT_POSTGRES_USERNAME: ${POSTGRES_USER}
+      COWRIE_OUTPUT_POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      COWRIE_OUTPUT_POSTGRES_PORT: "8432"
+    volumes:
+      - ./honeyspot/cowrie.cfg.dist:/cowrie/cowrie-git/etc/cowrie.cfg.dist
+      - ./honeyspot/userdb.txt:/cowrie/cowrie-git/etc/userdb.txt
+      - ./honeyspot/cowrie_data/etc:/cowrie/etc # For persistent config files
+      - ./honeyspot/cowrie_data/var:/cowrie/var # For persistent logs/downloads
+    ports:
+      - "22:2222"
+    depends_on:
+      - db
+    networks:
+      - oneblock_network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'    # Giới hạn tối đa 50% của 1 core CPU
+          memory: 512M    # Giới hạn tối đa 512MB RAM
+        reservations:
+          cpus: '0.10'    # Đảm bảo tối thiểu 10% CPU
+          memory: 128M    # Đảm bảo tối thiểu 128MB RAM
+
+
+  email-to-pdf:
+    build:
+      context: ./auto_print
+      dockerfile: Dockerfile
+    container_name: email-to-pdf-automation
+    restart: unless-stopped
+    
+    # Environment variables
+    env_file:
+      - .env
+    
+    # Volumes for persistent data
+    volumes:
+      - output:/app/output
+      - logs:/app/logs
+      - ./auto_print/.env:/app/.env:ro
+    # Health check
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    # Resource limits (optional but recommended)
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    
+    # Security options
+    security_opt:
+      - no-new-privileges:true
+    
+    # Read-only root filesystem (output and logs are writable via volumes)
+    read_only: false
+     # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
 
 volumes:
   appdata:
@@ -313,5 +428,8 @@ volumes:
   netdataconfig:
   netdatalib:
   netdatacache:
+  portainer_data:
+  logs:
+  output:
 networks:
   oneblock_network:

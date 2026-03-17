@@ -2,6 +2,7 @@ package dashboard
 
 import (
 	api "be/api/general"
+	"be/api/payos"
 	"be/common"
 	"be/config"
 	"be/security"
@@ -65,7 +66,7 @@ func (d *DashBoardController) Handler(r *echo.Group) {
 	// Payos
 	{
 		cfg := config.GetConfig().PayOS
-		NewPayOS(cfg.ClientID, cfg.ApiKey, cfg.ChecksumKey).Handler(r.Group("/payment/payos"))
+		payos.NewPayOS(cfg.ClientID, cfg.ApiKey, cfg.ChecksumKey).Handler(r.Group("/payment/payos"))
 		new(PaymentController).Handler(r.Group("/payment"))
 	}
 	// Manager User

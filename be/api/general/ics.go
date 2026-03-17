@@ -42,7 +42,7 @@ func (i *ICSAPi) Calendar(c echo.Context) error {
 			return c.NoContent(http.StatusOK)
 		}
 		calData = []byte(generateICS(ml))
-		common.CacheDataPool.Add("calendar", common.CacheData{
+		common.CacheDataPool.Add("calendar", &common.CacheData{
 			Data:      calData,
 			Mime:      "text/calendar",
 			InvalidAt: time.Now().Add(10 * time.Minute),

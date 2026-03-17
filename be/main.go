@@ -9,7 +9,6 @@ import (
 	"be/common"
 	"be/config"
 	"be/database"
-	"be/job"
 	"be/security"
 	"be/sp500"
 	"context"
@@ -20,6 +19,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/andybalholm/brotli"
 	echojwt "github.com/labstack/echo-jwt/v4"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -52,7 +52,11 @@ func main() {
 	go startMetricsHandler(81)
 	config.LoadConfig("config.json")
 	common.DefaultS3Hepler.Init(config.GetConfig().S3Endpoint, "hcm", config.GetConfig().S3AccessKey, config.GetConfig().S3SecretKey)
-	port := 80
+	port := config.GetConfig().Port
+	if port <= 0 {
+		port = 80
+	}
+
 	if err := database.InitDB(config.GetConfig().PostgressDsn); err != nil {
 		panic(fmt.Errorf("init db failed: %s", err.Error()))
 	}
@@ -68,9 +72,8 @@ func main() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	_ = ctx
-	job.JobCrawlInvestingCalendar()
-	go job.StartJob(ctx)
-	go job.StartJobResizeImage(ctx)
+	// job.JobCrawlInvestingCalendar()
+	// go job.StartJob(ctx)
 	startEchoServeAPI(port, func(router *echo.Echo) {
 		fnHello := func(c echo.Context) error {
 			return c.HTML(http.StatusOK, "oneblock")
@@ -89,6 +92,7 @@ func main() {
 			staticRouter.Static("/", "static")
 		}
 		new(apicuuho.CuuhoController).Handler(beRouter.Group("/cuuho"))
+		new(api.NuoiToiController).Handler(beRouter.Group("/nuoitoi"))
 		beRouter.Static("/chart", "chart")
 		{
 			dataRouter := beRouter.Group("/data")
@@ -208,8 +212,14 @@ func startEchoServeAPI(port int, handler func(router *echo.Echo), onErr func(err
 	}))
 
 	router.Use(middleware.Decompress())
-	router.Use(middleware.GzipWithConfig(middleware.GzipConfig{
-		Level: 5,
+	// router.Use(middleware.GzipWithConfig(middleware.GzipConfig{
+	// 	Level: 5,
+	// 	Skipper: func(c echo.Context) bool {
+	// 		return strings.HasPrefix(c.Response().Header().Get("Content-Type"), "image/")
+	// 	},
+	// }))
+	router.Use(common.BrotliWithConfig(common.BrotliConfig{
+		Level: brotli.DefaultCompression,
 		Skipper: func(c echo.Context) bool {
 			return strings.HasPrefix(c.Response().Header().Get("Content-Type"), "image/")
 		},
