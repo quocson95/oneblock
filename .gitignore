@@ -5,3 +5,5 @@ libwebp-1.2.0-linux-x86-64
 beszel_data
 .env
 bin/**
+libwebp**/**
+wireguard**/**
