@@ -7,3 +7,5 @@ vendor
 .env
 **besel_data/**
 bin/**
+libwebp**/**
+wireguard**/**
