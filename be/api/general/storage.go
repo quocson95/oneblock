@@ -48,6 +48,11 @@ func (h *S3Storage) StorageFile(c echo.Context) error {
 	bucket := c.QueryParam("bucket")
 	name := c.QueryParam("name")
 	noCache := c.QueryParam("noCache") == "true"
+	s3Provider := c.QueryParam("s3")
+	s3Helper := common.DefaultS3Hepler
+	if s3Provider == "idrivee2" {
+		s3Helper = common.Idrivee2S3Helper
+	}
 	if _, exsit := wlBucket[bucket]; !exsit {
 		return echo.NewHTTPError(http.StatusOK)
 
@@ -57,7 +62,7 @@ func (h *S3Storage) StorageFile(c echo.Context) error {
 
 	}
 	if noCache {
-		preSign, err := common.DefaultS3Hepler.PreSign(http.MethodGet, bucket, name)
+		preSign, err := s3Helper.PreSign(http.MethodGet, bucket, name)
 		if err != nil {
 			zap.L().With(zap.Error(err)).With(zap.String("bucket", bucket)).With(zap.String("name", name)).Error("presign failed")
 			return echo.NewHTTPError(http.StatusBadRequest, "presign failed")
@@ -85,7 +90,7 @@ func (h *S3Storage) StorageFile(c echo.Context) error {
 
 	// data no exist
 	zap.L().With(zap.String("bucket", bucket)).With(zap.String("name", name)).Info("[not found] fetch and cache data")
-	preSign, err := common.DefaultS3Hepler.PreSign(http.MethodGet, bucket, name)
+	preSign, err := s3Helper.PreSign(http.MethodGet, bucket, name)
 	if err != nil {
 		zap.L().With(zap.Error(err)).With(zap.String("bucket", bucket)).With(zap.String("name", name)).Error("presign failed")
 		return echo.NewHTTPError(http.StatusBadRequest, "presign failed")
@@ -124,6 +129,11 @@ func (h *S3Storage) StorageFile(c echo.Context) error {
 func (h *S3Storage) UploadStorageFile(c echo.Context) error {
 	bucket := c.QueryParam("bucket")
 	name := c.QueryParam("name")
+	s3Provider := c.QueryParam("s3")
+	s3Helper := common.DefaultS3Hepler
+	if s3Provider == "idrivee2" {
+		s3Helper = common.Idrivee2S3Helper
+	}
 	if len(bucket) == 0 {
 		zap.L().Error("bucket missing")
 		return c.NoContent(http.StatusOK)
@@ -149,7 +159,7 @@ func (h *S3Storage) UploadStorageFile(c echo.Context) error {
 			body = newBody
 		}
 	}
-	preSign, err := common.DefaultS3Hepler.PreSign(http.MethodPut, bucket, name)
+	preSign, err := s3Helper.PreSign(http.MethodPut, bucket, name)
 	if err != nil {
 		zap.L().With(zap.Error(err)).Error("presign put failed")
 		return c.JSON(http.StatusOK, common.Mdx{Err: errors.New("presign put failed")})

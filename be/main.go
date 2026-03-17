@@ -52,6 +52,9 @@ func main() {
 	go startMetricsHandler(81)
 	config.LoadConfig("config.json")
 	common.DefaultS3Hepler.Init(config.GetConfig().S3Endpoint, "hcm", config.GetConfig().S3AccessKey, config.GetConfig().S3SecretKey)
+	if config.GetConfig().Idrivee2Endpoint != "" {
+		common.Idrivee2S3Helper.Init(config.GetConfig().Idrivee2Endpoint, config.GetConfig().Idrivee2Region, config.GetConfig().Idrivee2AccessKey, config.GetConfig().Idrivee2SecretKey)
+	}
 	port := config.GetConfig().Port
 	if port <= 0 {
 		port = 80

@@ -31,6 +31,10 @@ type config struct {
 	S3Endpoint            string        `json:"s3_endpoint,omitempty"`
 	S3AccessKey           string        `json:"s3_access_key,omitempty"`
 	S3SecretKey           string        `json:"s3_secret_key,omitempty"`
+	Idrivee2Endpoint      string        `json:"idrivee2_endpoint,omitempty"`
+	Idrivee2AccessKey     string        `json:"idrivee2_access_key,omitempty"`
+	Idrivee2SecretKey     string        `json:"idrivee2_secret_key,omitempty"`
+	Idrivee2Region        string        `json:"idrivee2_secret_region,omitempty"`
 	PostgressDsn          string        `json:"postgress_dsn,omitempty"`
 	GoogleConsole         GoogleConsole `json:"google_console,omitempty"`
 	GoogleConsoleCustomer GoogleConsole `json:"google_console_customer,omitempty"`

@@ -17,6 +17,7 @@ type S3StorageResp struct {
 }
 
 var DefaultS3Hepler = &S3Helper{}
+var Idrivee2S3Helper = &S3Helper{}
 
 type S3PreSign struct {
 	Method string `json:"method,omitempty"`
