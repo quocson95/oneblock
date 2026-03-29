@@ -7,6 +7,7 @@ import (
 	"be/config"
 	"be/security"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -91,4 +92,25 @@ func (d *DashBoardController) Handler(r *echo.Group) {
 		new(CopyTradeOrder).Handler(gCustomer.Group("/copy-trade"))
 
 	}
+	{
+		gCustomer := r.Group("/ui")
+		gCustomer.GET("/", handlerUI)
+	}
+}
+
+func handlerUI(c echo.Context) error {
+	// 1. Fetch the remote site
+	res, err := http.Get("https://sieusieunob.github.io/OneBlockDashboard/")
+	if err != nil {
+		return c.String(http.StatusBadGateway, "Could not fetch dashboard")
+	}
+	defer res.Body.Close()
+
+	// 2. Set the Content-Type so the browser knows it's HTML
+	c.Response().Header().Set(echo.HeaderContentType, echo.MIMETextHTMLCharsetUTF8)
+	c.Response().WriteHeader(http.StatusOK)
+
+	// 3. Stream the body directly to the Echo response writer
+	_, err = io.Copy(c.Response().Writer, res.Body)
+	return err
 }

@@ -110,9 +110,20 @@ dnsmon.oneblock.vn {
 	}
 }
 
+dashboard.oneblock.vn {
+	encode zstd gzip
+	# Root UI
+	handle {
+		rewrite * /be/dashboard/ui{uri}
+	}
+	request_body {
+		max_size 100MB
+	}
+	reverse_proxy backend:80
+}
+
 portainer.oneblock.vn {
 	encode zstd gzip
-
 	handle {
 		reverse_proxy portainer:9000
 	}

@@ -143,7 +143,7 @@ func main() {
 		// dashboard
 		{
 			// be/dashboard/sso/google
-			suffixSkips := []string{"/sso/google", "/sso/google/callback", "/payment/payos/webhook"}
+			suffixSkips := []string{"/sso/google", "/sso/google/callback", "/payment/payos/webhook", "/be/dashboard/ui/"}
 			suffixContainSkips := []string{"/payment/payos/qrcode/"}
 			dashboardRouter := beRouter.Group("/dashboard")
 			dashboardRouter.Use(echojwt.WithConfig(echojwt.Config{
@@ -204,23 +204,11 @@ func startEchoServeAPI(port int, handler func(router *echo.Echo), onErr func(err
 		AllowHeaders:  []string{"Content-Type", "Accept", "user-agent", "referer", "Cookie", "Authorize", "Authorization"},
 		ExposeHeaders: []string{"Content-Length", "Access-Control-Allow-Origin"},
 		AllowOriginFunc: func(origin string) (bool, error) {
-			// if _, exist := trustOrigin[origin]; exist {
-			// 	return true, nil
-			// }
-			// // return exist
-			// zap.L().With(zap.String("origin", origin)).Error("reject origin")
-			// return false, nil
 			return true, nil
 		},
 	}))
 
 	router.Use(middleware.Decompress())
-	// router.Use(middleware.GzipWithConfig(middleware.GzipConfig{
-	// 	Level: 5,
-	// 	Skipper: func(c echo.Context) bool {
-	// 		return strings.HasPrefix(c.Response().Header().Get("Content-Type"), "image/")
-	// 	},
-	// }))
 	router.Use(common.BrotliWithConfig(common.BrotliConfig{
 		Level: brotli.DefaultCompression,
 		Skipper: func(c echo.Context) bool {
@@ -238,27 +226,7 @@ func startEchoServeAPI(port int, handler func(router *echo.Echo), onErr func(err
 }
 
 func createDefaultUser() {
-	// emails := []string{
-	// 	"dangquocson1995@gmail.com",
-	// 	"nghuuloc512@gmail.com",
-	// 	"nguyentrungbmt17@gmail.com",
-	// 	"haotran1689@gmail.com",
-	// 	"dtoan.bui@gmail.com",
-	// }
-	// for _, email := range emails {
-	// 	u := common.User{
-	// 		Email:        email,
-	// 		Role:         common.RoleUserAdmin,
-	// 		UsdtInWallet: 0,
-	// 	}
-	// 	if err := u.Create(); err != nil {
-	// 		zap.L().With(zap.Error(err)).With(zap.String("email", email)).Error("add user failed")
-	// 	}
 
-	// }
-	// u:=common.User{
-	// 	Email: "sondq.1024@gmail.com",
-	// }
 }
 
 func startMetricsHandler(port int) {
